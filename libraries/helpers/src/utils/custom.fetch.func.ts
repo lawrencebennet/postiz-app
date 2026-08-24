@@ -43,6 +43,16 @@ export const customFetch = (
             .find((p) => p.includes('impersonate='))
             ?.split('=')[1];
 
+    const portalNonSecuredCookie =
+      typeof document === 'undefined'
+        ? null
+        : document.cookie
+            .split(';')
+            .find((p) => p.trim().startsWith('neptive_portal='))
+            ?.split('=')
+            .slice(1)
+            .join('=');
+
     const fetchRequest = await fetch(params.baseUrl + url, {
       ...(secured ? { credentials: 'include' } : {}),
       ...(newRequestObject || options),
@@ -65,6 +75,9 @@ export const customFetch = (
           : {}),
         ...(authNonSecuredImpersonate
           ? { impersonate: authNonSecuredImpersonate }
+          : {}),
+        ...(portalNonSecuredCookie
+          ? { 'neptive-portal': portalNonSecuredCookie }
           : {}),
       },
       // @ts-ignore

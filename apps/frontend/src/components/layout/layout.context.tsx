@@ -26,13 +26,6 @@ function LayoutContextInner(params: { children: ReactNode }) {
   const { backendUrl, isGeneral, isSecured } = useVariables();
   const afterRequest = useCallback(
     async (url: string, options: RequestInit, response: Response) => {
-      if (
-        typeof window !== 'undefined' &&
-        (window.location.href.includes('/p/') ||
-          window.location.pathname.startsWith('/provider/'))
-      ) {
-        return true;
-      }
       const headerAuth =
         response?.headers?.get('auth') || response?.headers?.get('Auth');
       const showOrg =
@@ -42,6 +35,28 @@ function LayoutContextInner(params: { children: ReactNode }) {
         response?.headers?.get('Impersonate');
       const logout =
         response?.headers?.get('logout') || response?.headers?.get('Logout');
+      const portalAuth =
+        response?.headers?.get('neptive-portal') ||
+        response?.headers?.get('Neptive-Portal');
+      if (portalAuth) {
+        setCookie('neptive_portal', portalAuth, 30);
+      }
+      if (
+        typeof window !== 'undefined' &&
+        (window.location.href.includes('/p/') ||
+          window.location.pathname.startsWith('/portal') ||
+          window.location.pathname.startsWith('/provider/'))
+      ) {
+        if (
+          window.location.pathname.startsWith('/portal') &&
+          response.status === 401 &&
+          !window.location.pathname.startsWith('/portal/magic') &&
+          !window.location.pathname.startsWith('/portal/login')
+        ) {
+          window.location.href = '/portal/login';
+        }
+        return true;
+      }
       if (headerAuth) {
         setCookie('auth', headerAuth, 365);
       }

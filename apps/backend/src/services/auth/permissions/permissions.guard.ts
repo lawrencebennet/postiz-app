@@ -25,7 +25,9 @@ export class PoliciesGuard implements CanActivate {
       request.path.indexOf('/auth') > -1 ||
       request.path.indexOf('/auth') > -1 ||
       request.path.indexOf('/integrations/social-connect') > -1 ||
-      request.path.indexOf('/integrations/provider') > -1
+      request.path.indexOf('/integrations/provider') > -1 ||
+      request.path.indexOf('/neptive/portal') > -1 ||
+      request.path.indexOf('/neptive/portal-auth') > -1
     ) {
       return true;
     }

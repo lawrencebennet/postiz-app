@@ -31,6 +31,7 @@ async function start() {
         'auth',
         'showorg',
         'impersonate',
+        'neptive-portal',
         'x-copilotkit-runtime-client-gql-version',
       ],
       exposedHeaders: [
@@ -38,7 +39,9 @@ async function start() {
         'onboarding',
         'activate',
         'x-copilotkit-runtime-client-gql-version',
-        ...(process.env.NOT_SECURED ? ['auth', 'showorg', 'impersonate'] : []),
+        ...(process.env.NOT_SECURED
+          ? ['auth', 'showorg', 'impersonate', 'neptive-portal']
+          : []),
       ],
       origin: [
         process.env.FRONTEND_URL,

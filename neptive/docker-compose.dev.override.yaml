@@ -1,0 +1,9 @@
+# Local development only. Not used in production.
+# Host PostgreSQL 16/main already binds 127.0.0.1:5432.
+# Host PostgreSQL 14/odoo14 already binds 127.0.0.1:5433.
+# Those services are unrelated to Postiz and must be left running.
+# Compose concatenates `ports` unless !override is used (Compose >= 2.24).
+services:
+  postiz-postgres:
+    ports: !override
+      - "5434:5432"
