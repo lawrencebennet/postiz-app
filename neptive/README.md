@@ -2,18 +2,21 @@
 
 Isolated agency/client domain around Postiz. Postiz remains the publishing engine.
 
+**New clone / next agent: start at [HANDOFF.md](./HANDOFF.md).** Local env overlay: [env.local.example](./env.local.example).
+
 Custom work lives on the **`neptive`** branch of `lawrencebennet/postiz-app`. Official Postiz is `upstream` (`gitroomhq/postiz-app`). See [UPSTREAM_MAINTENANCE.md](./UPSTREAM_MAINTENANCE.md).
 
 Read in this order:
 
-1. [NEPTIVE_POSTIZ_AUDIT.md](./NEPTIVE_POSTIZ_AUDIT.md)
-2. [BRIGHTBEAN_REFERENCE_AUDIT.md](./BRIGHTBEAN_REFERENCE_AUDIT.md)
-3. [NEPTIVE_FEATURE_MATRIX.md](./NEPTIVE_FEATURE_MATRIX.md)
-4. [NEPTIVE_ARCHITECTURE.md](./NEPTIVE_ARCHITECTURE.md)
-5. [UPSTREAM_MAINTENANCE.md](./UPSTREAM_MAINTENANCE.md)
-6. [NEPTIVE_CORE_TOUCHPOINTS.md](./NEPTIVE_CORE_TOUCHPOINTS.md)
-7. [EXISTING_FAILURES.md](./EXISTING_FAILURES.md)
-8. [VERTICAL_SLICE_VALIDATION.md](./VERTICAL_SLICE_VALIDATION.md)
+1. [HANDOFF.md](./HANDOFF.md) — clone, COSA/DOVE/COME, restart, next work
+2. [NEPTIVE_POSTIZ_AUDIT.md](./NEPTIVE_POSTIZ_AUDIT.md)
+3. [BRIGHTBEAN_REFERENCE_AUDIT.md](./BRIGHTBEAN_REFERENCE_AUDIT.md)
+4. [NEPTIVE_FEATURE_MATRIX.md](./NEPTIVE_FEATURE_MATRIX.md)
+5. [NEPTIVE_ARCHITECTURE.md](./NEPTIVE_ARCHITECTURE.md)
+6. [UPSTREAM_MAINTENANCE.md](./UPSTREAM_MAINTENANCE.md)
+7. [NEPTIVE_CORE_TOUCHPOINTS.md](./NEPTIVE_CORE_TOUCHPOINTS.md)
+8. [EXISTING_FAILURES.md](./EXISTING_FAILURES.md)
+9. [VERTICAL_SLICE_VALIDATION.md](./VERTICAL_SLICE_VALIDATION.md)
 
 ## Local stack
 

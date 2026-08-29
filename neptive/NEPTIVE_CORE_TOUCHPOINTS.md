@@ -12,6 +12,7 @@ Intentional modifications **outside** `neptive/` folders. If a file is not liste
 | `apps/frontend/src/components/layout/top.menu.tsx` | Agency nav item | Agency UX | Medium (menu churn) | Yes with a plugin slot (does not exist) |
 | `apps/frontend/src/components/layout/layout.context.tsx` | Portal 401 must not clear Postiz auth; persist `neptive-portal` header | Dual auth | Medium | No |
 | `libraries/helpers/src/utils/custom.fetch.func.ts` | Send `neptive-portal` header in `NOT_SECURED` mode | Portal session | Low | Yes if portal is always httpOnly |
+| `.gitignore` | Ignore Next.js-generated `apps/frontend/AGENTS.md` and `CLAUDE.md` | Clean clones | Low | Yes |
 
 **Not touchpoints (new isolated trees):**
 

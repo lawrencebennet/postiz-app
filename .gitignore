@@ -45,6 +45,8 @@ Thumbs.db
 
 # Next.js
 .next
+apps/frontend/AGENTS.md
+apps/frontend/CLAUDE.md
 
 # Vim files
 **/*.swp
