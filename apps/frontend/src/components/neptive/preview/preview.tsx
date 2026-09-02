@@ -76,14 +76,14 @@ export const PreviewMediaCarousel: FC<{
   contain?: boolean;
   className?: string;
 }> = ({ media, label = 'Media preview', dark = false, contain = true, className }) => {
-  const [viewportRef] = useEmblaCarousel({ loop: false, watchDrag: true });
+  const [viewportRef, emblaApi] = useEmblaCarousel({ loop: false, watchDrag: true });
 
   if (!media.length) {
     return <div className={clsx('flex min-h-[280px] items-center justify-center bg-slate-100 text-[13px] text-slate-500', className)}>Nessun media collegato</div>;
   }
 
   return (
-    <div className={clsx('relative overflow-hidden', className)}>
+    <div className={clsx('group relative overflow-hidden', className)}>
       <div ref={viewportRef} className="overflow-hidden touch-pan-y" aria-label={label}>
         <div className="flex">
           {media.map((item, index) => (
@@ -95,6 +95,39 @@ export const PreviewMediaCarousel: FC<{
           ))}
         </div>
       </div>
+      {media.length > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Slide precedente"
+            title="Slide precedente"
+            onClick={() => emblaApi?.scrollPrev()}
+            disabled={!emblaApi?.canScrollPrev()}
+            className={clsx(
+              'absolute left-[10px] top-1/2 h-[38px] w-[38px] -translate-y-1/2 rounded-full text-[28px] leading-none opacity-80 shadow-lg transition-opacity hover:opacity-100 focus:opacity-100 disabled:pointer-events-none disabled:opacity-0',
+              dark ? 'bg-black/70 text-white' : 'bg-white/90 text-slate-800'
+            )}
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            aria-label="Slide successiva"
+            title="Slide successiva"
+            onClick={() => emblaApi?.scrollNext()}
+            disabled={!emblaApi?.canScrollNext()}
+            className={clsx(
+              'absolute right-[10px] top-1/2 h-[38px] w-[38px] -translate-y-1/2 rounded-full text-[28px] leading-none opacity-80 shadow-lg transition-opacity hover:opacity-100 focus:opacity-100 disabled:pointer-events-none disabled:opacity-0',
+              dark ? 'bg-black/70 text-white' : 'bg-white/90 text-slate-800'
+            )}
+          >
+            ›
+          </button>
+          <div className={clsx('pointer-events-none absolute bottom-[10px] left-1/2 -translate-x-1/2 rounded-full px-[9px] py-[4px] text-[10px] font-[600] opacity-0 transition-opacity group-hover:opacity-100', dark ? 'bg-black/65 text-white/80' : 'bg-white/90 text-slate-600')}>
+            Trascina per scorrere
+          </div>
+        </>
+      )}
     </div>
   );
 };
