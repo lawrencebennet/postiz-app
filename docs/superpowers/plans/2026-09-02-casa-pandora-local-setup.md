@@ -35,9 +35,8 @@
 Run from the Neptive worktree:
 
 ```bash
-mise install node@22.12.0
-mise use --path node@22.12.0
-node --version
+mise install node@22.12.0 pnpm@10.6.1
+mise exec node@22.12.0 pnpm@10.6.1 -- node --version
 ```
 
 Expected: Node reports `v22.12.x`.
@@ -47,9 +46,7 @@ Expected: Node reports `v22.12.x`.
 Run:
 
 ```bash
-mise install pnpm@10.6.1
-mise use --path pnpm@10.6.1
-pnpm --version
+mise exec node@22.12.0 pnpm@10.6.1 -- pnpm --version
 ```
 
 Expected: `10.6.1`.
@@ -273,4 +270,3 @@ git diff --check
 ```
 
 Expected: `.env`, node_modules, logs, and raw tokens are ignored; only the intended guide/spec/plan changes are tracked.
-
