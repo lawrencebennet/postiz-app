@@ -50,6 +50,16 @@ Lo script è idempotente e prepara:
 
 Gli asset sono neutrali e locali in `apps/frontend/public/neptive-demo/`; l’integrazione Instagram demo non pubblica davvero.
 
+Per aggiungere i due caroselli Giostra del Saracino dalle cartelle locali di
+`/home/lorenzo/Downloads/`:
+
+```bash
+node --env-file=.env neptive/scripts/casa-pandora-giostra-carousels.mjs
+```
+
+Lo script collega al PED i due gruppi Postiz da 5 slide, tutti in formato
+`1080×1440`, mantenendo l’ordine numerico dei file.
+
 ## Flusso agency
 
 Credenziali locali:
