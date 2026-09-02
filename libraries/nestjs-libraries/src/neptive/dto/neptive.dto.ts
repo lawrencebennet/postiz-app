@@ -102,6 +102,10 @@ export class TransitionNeptivePedDto {
     'COMPLETED',
   ])
   status: string;
+
+  @IsOptional()
+  @IsString()
+  comment?: string;
 }
 
 export class CreateNeptivePedItemDto {

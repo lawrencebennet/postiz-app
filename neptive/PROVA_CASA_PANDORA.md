@@ -1,31 +1,8 @@
 # Guida di prova — Casa Pandora
 
-Questa guida prova il layer Neptive sopra Postiz nel branch `neptive`.
+Questa guida verifica il PED mensile Neptive sopra Postiz. Il PED organizza i contenuti, ma il contenuto reale resta quello nativo di Postiz: media, ordine, caption, canale, programmazione e stato di pubblicazione.
 
-## Stato locale
-
-Il progetto è eseguito dal worktree:
-
-```text
-/home/lorenzo/Work/postiz-app/.worktrees/neptive
-```
-
-URL principali:
-
-| Area | URL |
-|---|---|
-| App | http://localhost:4200 |
-| Login agency/admin | http://localhost:4200/auth/login |
-| Vista agency | http://localhost:4200/agency |
-| Login portal cliente | http://localhost:4200/portal/login |
-| Backend | http://localhost:3001 |
-| Temporal UI | http://localhost:8080 |
-
-Il backend usa `3001` perché sulla macchina la porta `3000` è già occupata da un servizio esterno. Redis usa il servizio già attivo su `localhost:6379`; non fermarlo.
-
-## Avvio
-
-Da una shell nella directory del worktree:
+## Avvio locale
 
 ```bash
 cd /home/lorenzo/Work/postiz-app/.worktrees/neptive
@@ -34,123 +11,110 @@ docker compose -f docker-compose.dev.yaml -f neptive/docker-compose.dev.override
   postiz-postgres temporal-postgresql temporal-elasticsearch temporal
 mise exec node@22.12.0 pnpm@10.6.1 -- pnpm prisma-generate
 mise exec node@22.12.0 pnpm@10.6.1 -- pnpm prisma-db-push
+node --env-file=.env neptive/scripts/casa-pandora-september.mjs
 ```
 
-Avvia poi i tre processi in tre terminali distinti:
+Avvia in tre terminali distinti:
 
 ```bash
 mise exec node@22.12.0 pnpm@10.6.1 -- pnpm run dev:backend
-```
-
-```bash
 mise exec node@22.12.0 pnpm@10.6.1 -- pnpm run dev:orchestrator
-```
-
-```bash
 mise exec node@22.12.0 pnpm@10.6.1 -- pnpm run dev:frontend
 ```
 
-Aprire sempre `http://localhost:4200`, non `127.0.0.1`, per mantenere coerenti cookie e CORS.
+URL:
 
-## Credenziali admin/agency
+| Area | URL |
+|---|---|
+| App | http://localhost:4200 |
+| Login agency/admin | http://localhost:4200/auth/login |
+| Vista agency | http://localhost:4200/agency |
+| PED Casa Pandora agency | http://localhost:4200/agency/e3cc2a30-97f4-4fda-81ba-52c9ef4e278f/ped |
+| Login portal cliente | http://localhost:4200/portal/login |
+| Backend | http://localhost:3001 |
+
+Il backend usa `3001` perché `3000` è occupata da un servizio locale esterno. Aprire l’app con `localhost:4200`, non con `127.0.0.1`, per mantenere corretti cookie e CORS.
+
+## Dati demo
+
+Lo script è idempotente e prepara:
+
+- cliente `Casa Pandora`;
+- PED `Casa Pandora — Settembre 2026`, dal 1 al 30 settembre 2026;
+- un post immagine;
+- un carosello Instagram di 5 slide ordinate;
+- un Reel video MP4 riproducibile;
+- un secondo carosello di 5 slide;
+- una Story;
+- caption, date/orari, canale Instagram e stati di approvazione.
+
+Gli asset sono neutrali e locali in `apps/frontend/public/neptive-demo/`; l’integrazione Instagram demo non pubblica davvero.
+
+## Flusso agency
+
+Credenziali locali:
 
 ```text
 Email:    agency@neptive.local
 Password: NeptiveVal1d!
 ```
 
-Sono credenziali locali di test, non usarle in produzione.
+1. Aprire `/auth/login` e accedere.
+2. Aprire **Agency → Casa Pandora → PED**, oppure il link diretto sopra.
+3. Selezionare **Casa Pandora — Settembre 2026**.
+4. Usare il **Calendario mensile** per verificare date, orari, miniature, piattaforma, tipo e stato.
+5. Usare **Contenuti in ordine cronologico** per la revisione completa del mese.
+6. Aprire una scheda: la finestra mostra media esatti, caption, canale, programmazione, stato Postiz e stato approvazione.
+7. Nel carosello usare miniature numerate e frecce: l’ordine è quello dell’array media di Postiz.
+8. Nel Reel usare il player video HTML5 con controlli; non c’è autoplay con audio.
+9. Per aggiungere contenuto usare **+ Aggiungi contenuto** e selezionare un gruppo Postiz esistente. Il composer, l’upload e la programmazione continuano a essere gestiti da Postiz.
+10. Per creare un nuovo contenuto aprire il composer nativo Postiz, completare normalmente media/caption/canale/data, quindi collegare il relativo `postGroup` al PED.
+11. Usare **Invia al cliente** per portare il PED in revisione cliente. Questo non pubblica nulla.
+12. Monitorare direttamente nel PED le approvazioni e i feedback; i commenti interni restano visibili solo all’agency.
 
-## Prova da view admin/agency
+## Flusso cliente
 
-1. Aprire http://localhost:4200/auth/login.
-2. Inserire le credenziali admin sopra e premere **Sign in**.
-3. Aprire **Agency** dal menu oppure direttamente http://localhost:4200/agency.
-4. Verificare che compaia il cliente **Casa Pandora**.
-5. Aprire Casa Pandora.
-6. In **Overview** verificare il riquadro **Current PED**.
-7. Aprire la scheda **PED** oppure direttamente:
-   `http://localhost:4200/agency/e3cc2a30-97f4-4fda-81ba-52c9ef4e278f/ped`
-8. Verificare il PED **PED Demo Casa Pandora**, in stato `DRAFT`, con queste voci:
-   - Presentazione Casa Pandora
-   - Rubrica prodotto
-   - Testimonianza cliente
-9. Dalla stessa pagina è possibile creare altri PED, aggiungere voci e avviare il flusso di revisione interno/cliente.
-10. Le altre schede disponibili per Casa Pandora sono **Content**, **Approvals**, **Strategy**, **Activities**, **Materials**, **Analytics**, **Reports** e **Client users**.
-
-### Invito del cliente dal pannello admin
-
-1. Entrare nella scheda **Client users** di Casa Pandora.
-2. Usare l’invito con:
+Utente demo:
 
 ```text
-Nome:  Cliente Casa Pandora
-Email: cliente@casapandora.local
-Ruolo: CLIENT_ADMIN
+Email:  cliente@casapandora.local
+Accesso: magic link monouso, senza password Postiz
 ```
 
-3. In ambiente locale, senza Resend configurato, il link viene mostrato dalla risposta dell’invito/API e non viene spedito via email.
-4. Aprire il link in una finestra o scheda separata.
+1. Generare un magic link da **Agency → Casa Pandora → Client users** e aprirlo in una scheda separata.
+2. Premere **Continue** nella schermata di accesso.
+3. Aprire **PED** oppure `/portal/ped`.
+4. Verificare l’intestazione **Casa Pandora · Piano editoriale · Settembre 2026** e il riepilogo dei contenuti.
+5. Passare dal calendario alla lista cronologica; su telefono viene usata automaticamente la lista verticale.
+6. Aprire ogni contenuto e verificare anteprima, carosello completo, ordine slide, video, caption, data/ora, canale e stato.
+7. Su un contenuto in **In attesa di approvazione** premere **Approva contenuto**.
+8. Su un altro contenuto compilare il commento e premere **Richiedi modifica**. Il feedback viene salvato nel PED e mostrato all’agency.
+9. Quando il PED è in revisione, usare anche l’azione di approvazione complessiva. L’approvazione non cambia la programmazione e non pubblica automaticamente.
 
-## Prova da view cliente
+Il cliente vede solo dati del proprio `customerId`: PED, contenuti Postiz collegati, media, approvazioni e commenti autorizzati. Non usare parametri URL come meccanismo di autorizzazione.
 
-### Identità cliente
+## Inviti e nuovo link cliente
 
-```text
-Email: cliente@casapandora.local
-Accesso: magic link, senza password Postiz
+Il magic link è monouso e vale 30 giorni. Per generarne uno nuovo:
+
+1. accedere come agency;
+2. aprire **Casa Pandora → Client users**;
+3. invitare `cliente@casapandora.local` con ruolo `CLIENT_ADMIN`;
+4. aprire il link restituito in una finestra o scheda separata.
+
+Resend/email non è richiesto per questa prova: il link viene restituito dall’invito locale.
+
+## Note su Instagram e pubblicazione
+
+Il portale proietta il modello Postiz e supporta caroselli, immagini singole, Stories, Reel e video generici quando rappresentati dai dati nativi Postiz. Non vengono copiati o riordinati media nel modello PED.
+
+Per una pubblicazione Instagram reale, i media devono rispettare i requisiti Postiz/Meta, inclusi URL HTTPS pubblicamente raggiungibili. Gli asset locali della demo servono alla revisione visuale locale e non sono credenziali o contenuti pubblicabili.
+
+## Verifiche tecniche
+
+```bash
+mise exec node@22.12.0 pnpm@10.6.1 -- pnpm exec jest --config ./neptive/jest.config.ts --runInBand
+mise exec node@22.12.0 pnpm@10.6.1 -- pnpm run build
 ```
 
-Il magic link è monouso e vale 30 giorni. Il link attuale è stato consegnato separatamente insieme a questa guida; non è incluso nel repository e non va condiviso pubblicamente.
-
-1. Aprire il magic link.
-2. Nella pagina **Open your portal** premere **Continue**.
-3. Verificare l’apertura di http://localhost:4200/portal.
-4. Verificare che l’intestazione mostri **Cliente Casa Pandora**.
-5. Verificare la dashboard con il riquadro **Current PED**.
-6. Aprire **PED** oppure http://localhost:4200/portal/ped.
-7. Verificare che siano visibili solo il PED Casa Pandora e le sue tre voci.
-8. Provare le sezioni **Approvals**, **Upcoming**, **Strategy**, **Work done**, **Materials**, **Reports** e **Results**.
-9. Usare **Sign out** per terminare la sessione portale.
-
-Il portale usa una sessione separata da quella Postiz. Il `customerId` della sessione viene applicato server-side: non bisogna considerare la sola navigazione o il parametro URL come meccanismo di sicurezza.
-
-## Generare un nuovo accesso cliente
-
-Se il link è già stato consumato, è scaduto o si vuole una nuova sessione:
-
-1. Accedere di nuovo come admin.
-2. Aprire **Agency → Casa Pandora → Client users**.
-3. Invitare nuovamente `cliente@casapandora.local`.
-4. Usare il nuovo link restituito.
-
-Per una verifica API, l’endpoint admin è:
-
-```text
-POST http://localhost:3001/neptive/agency/clients/<customerId>/users
-```
-
-con body:
-
-```json
-{
-  "email": "cliente@casapandora.local",
-  "name": "Cliente Casa Pandora",
-  "role": "CLIENT_ADMIN"
-}
-```
-
-## Verifiche tecniche già eseguite
-
-- Dipendenze installate con PNPM `10.6.1` e lockfile congelato.
-- Node `22.12.0` utilizzato per l’esecuzione.
-- Postgres applicativo su `localhost:5434`.
-- Redis raggiungibile su `localhost:6379`.
-- Temporal raggiungibile su `localhost:7233`.
-- Backend attivo su `localhost:3001`.
-- Orchestrator attivo su `localhost:3002`.
-- Frontend attivo su `localhost:4200`.
-- Test Neptive: `27` test passati.
-- Magic link consumato una sola volta: il replay restituisce `401`.
-- Portale senza sessione: restituisce `401`.
-
+Il test root esistente può fallire per la configurazione upstream `@nx/jest`; distinguere quel problema dai test Neptive dedicati.

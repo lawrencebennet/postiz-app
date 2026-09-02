@@ -1160,6 +1160,9 @@ model NeptiveEditorialPlan {
   createdByUserId        String?
   approvedByClientUserId String?
   approvedAt             DateTime?
+  changeRequestNote      String?
+  changeRequestedByClientUserId String?
+  changeRequestedAt      DateTime?
   createdAt              DateTime                    @default(now())
   updatedAt              DateTime                    @updatedAt
   deletedAt              DateTime?

@@ -25,6 +25,16 @@ import {
 } from '@gitroom/frontend/components/neptive/neptive.ui';
 import { useToaster } from '@gitroom/react/toaster/toaster';
 import clsx from 'clsx';
+import {
+  PedCalendar,
+  PedContentList,
+  pedSummary,
+} from '@gitroom/frontend/components/neptive/ped-calendar';
+import {
+  PedCalendarItem,
+  PedContentCard,
+} from '@gitroom/frontend/components/neptive/ped-content-card';
+import { PedContentDetail } from '@gitroom/frontend/components/neptive/ped-content-detail';
 
 const TABS = [
   { href: '', label: 'Overview' },
@@ -162,11 +172,22 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const { data, mutate } = useNeptiveAgencyList(customerId, 'peds');
+  const { data: postsData } = useNeptiveAgencyList(customerId, 'posts?state=all');
   const [name, setName] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
   const [objectives, setObjectives] = useState('');
   const [itemDrafts, setItemDrafts] = useState<Record<string, string>>({});
+  const [itemGroups, setItemGroups] = useState<Record<string, string>>({});
+  const [selectedItem, setSelectedItem] = useState<PedCalendarItem | null>(null);
+
+  const postGroups = Array.from(
+    new Map(
+      (postsData?.posts || [])
+        .filter((post: any) => post.group && post.state !== 'PUBLISHED')
+        .map((post: any) => [post.group, post])
+    ).values()
+  );
 
   const create = useCallback(async () => {
     const response = await fetch(`/neptive/agency/clients/${customerId}/peds`, {
@@ -183,10 +204,18 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
   }, [fetch, customerId, name, periodStart, periodEnd, objectives, mutate, toaster]);
 
   const transition = useCallback(
-    async (id: string, status: string) => {
+    async (id: string, status: string, needsComment?: boolean) => {
+      let comment: string | undefined;
+      if (needsComment) {
+        comment = window.prompt('Commento richiesto') || '';
+        if (!comment.trim()) {
+          toaster.show('Un commento è obbligatorio', 'warning');
+          return;
+        }
+      }
       const response = await fetch(
         `/neptive/agency/clients/${customerId}/peds/${id}/transition`,
-        { method: 'POST', body: JSON.stringify({ status }) }
+        { method: 'POST', body: JSON.stringify({ status, comment }) }
       );
       if (!response.ok) {
         toaster.show('That step is not available yet', 'warning');
@@ -205,13 +234,20 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
       }
       const response = await fetch(
         `/neptive/agency/clients/${customerId}/peds/${id}/items`,
-        { method: 'POST', body: JSON.stringify({ title }) }
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            title,
+            postGroup: itemGroups[id] || undefined,
+          }),
+        }
       );
       if (!response.ok) {
         toaster.show('Could not add item', 'warning');
         return;
       }
       setItemDrafts((current) => ({ ...current, [id]: '' }));
+      setItemGroups((current) => ({ ...current, [id]: '' }));
       await mutate();
     },
     [fetch, customerId, itemDrafts, mutate, toaster]
@@ -229,69 +265,62 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[12px]">
-      <NeptiveCard title="Editorial plans">
-        {(data || []).map((ped: any) => (
-          <div
-            key={ped.id}
-            className="border-b border-newTableBorder py-[12px] last:border-0"
-          >
-            <div className="flex items-center gap-[8px] flex-wrap">
-              <div className="font-[600]">{ped.name}</div>
-              <NeptiveBadge tone={statusTone(ped.status)}>
-                {ped.status}
-              </NeptiveBadge>
-            </div>
-            <div className="text-[12px] text-newTableText">
-              {ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}
-            </div>
-            {ped.objectives && (
-              <div className="text-[13px] mt-[6px] whitespace-pre-wrap">
-                {ped.objectives}
+    <div className="flex flex-col gap-[12px]">
+      {(data || []).map((ped: any) => {
+        const items = (ped.items || []) as PedCalendarItem[];
+        const summary = pedSummary(items);
+        return (
+          <div key={ped.id} className="flex flex-col gap-[12px]">
+            <NeptiveCard>
+              <div className="flex items-start justify-between gap-[12px] flex-wrap">
+                <div>
+                  <div className="text-[11px] text-newTableText uppercase tracking-[0.08em]">Piano editoriale</div>
+                  <div className="text-[22px] font-[700]">{ped.name}</div>
+                  <div className="text-[12px] text-newTableText">{ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}</div>
+                </div>
+                <NeptiveBadge tone={statusTone(ped.status)}>{ped.status}</NeptiveBadge>
               </div>
-            )}
-            <ul className="mt-[8px] text-[13px] list-disc pl-[18px]">
-              {(ped.items || []).map((item: any) => (
-                <li key={item.id} className="flex items-start justify-between gap-[8px]">
-                  <span>{item.title}</span>
-                  <button
-                    className="text-[11px] text-newTableText"
-                    onClick={() => removeItem(ped.id, item.id)}
-                  >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <div className="flex gap-[6px] mt-[8px]">
-              <input
-                className={fieldClass}
-                placeholder="Add planned item"
-                value={itemDrafts[ped.id] || ''}
-                onChange={(e) =>
-                  setItemDrafts((current) => ({
-                    ...current,
-                    [ped.id]: e.target.value,
-                  }))
-                }
-              />
-              <Button onClick={() => addItem(ped.id)}>Add</Button>
-            </div>
-            <div className="flex gap-[6px] mt-[8px] flex-wrap">
-              {nextPedActions(ped.status).map((action) => (
-                <button
-                  key={action.status}
-                  className="text-[11px] px-[8px] h-[28px] rounded-[6px] bg-newBtnSimple"
-                  onClick={() => transition(ped.id, action.status)}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
+              {ped.objectives && <div className="text-[13px] mt-[10px] whitespace-pre-wrap">{ped.objectives}</div>}
+              <div className="flex flex-wrap gap-[6px] mt-[12px]">
+                <NeptiveBadge>{summary.total} contenuti</NeptiveBadge>
+                <NeptiveBadge>{summary.carousels} caroselli</NeptiveBadge>
+                <NeptiveBadge>{summary.reels} reel</NeptiveBadge>
+                <NeptiveBadge>{summary.posts} post</NeptiveBadge>
+                <NeptiveBadge>{summary.stories} stories</NeptiveBadge>
+              </div>
+              <div className="flex gap-[6px] mt-[12px] flex-wrap">
+                {nextPedActions(ped.status).map((action) => (
+                  <button key={action.status} className="text-[11px] px-[8px] h-[28px] rounded-[6px] bg-newBtnSimple" onClick={() => transition(ped.id, action.status, action.needsComment)}>{action.label}</button>
+                ))}
+              </div>
+            </NeptiveCard>
+            <PedCalendar items={items} periodStart={ped.periodStart} periodEnd={ped.periodEnd} onOpen={setSelectedItem} />
+            <PedContentList items={items} onOpen={setSelectedItem} />
+            <NeptiveCard title="Contenuti collegati">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-[8px]">
+                {items.map((item) => <PedContentCard key={item.id} item={item} onOpen={setSelectedItem} />)}
+              </div>
+              {!items.length && <NeptiveEmpty>Aggiungi il primo contenuto Postiz a questo PED.</NeptiveEmpty>}
+            </NeptiveCard>
+            <NeptiveCard title="Aggiungi contenuto dal calendario Postiz">
+              <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-[8px] items-end">
+                <NeptiveField label="Titolo editoriale">
+                  <input className={fieldClass} placeholder="Es. Camera Deluxe" value={itemDrafts[ped.id] || ''} onChange={(e) => setItemDrafts((current) => ({ ...current, [ped.id]: e.target.value }))} />
+                </NeptiveField>
+                <NeptiveField label="Contenuto Postiz">
+                  <select className={fieldClass} value={itemGroups[ped.id] || ''} onChange={(e) => setItemGroups((current) => ({ ...current, [ped.id]: e.target.value }))}>
+                    <option value="">Seleziona un draft Postiz</option>
+                    {postGroups.map((post: any) => <option key={post.group} value={post.group}>{postPreviewText(post.content) || 'Contenuto senza titolo'} · {post.state}</option>)}
+                  </select>
+                </NeptiveField>
+                <Button onClick={() => addItem(ped.id)}>+ Aggiungi</Button>
+              </div>
+              <div className="text-[12px] text-newTableText mt-[8px]">Caption, media, ordine, canale, data e stato restano gestiti dal composer/calendario Postiz.</div>
+            </NeptiveCard>
           </div>
-        ))}
-        {!data?.length && <NeptiveEmpty>No PEDs</NeptiveEmpty>}
-      </NeptiveCard>
+        );
+      })}
+      {!data?.length && <NeptiveCard title="Editorial plans"><NeptiveEmpty>Nessun PED</NeptiveEmpty></NeptiveCard>}
       <NeptiveCard title="New PED">
         <div className="flex flex-col gap-[8px]">
           <NeptiveField label="Name">
@@ -309,6 +338,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
           <Button onClick={create}>Create PED</Button>
         </div>
       </NeptiveCard>
+      <PedContentDetail item={selectedItem} mode="agency" onClose={() => setSelectedItem(null)} />
     </div>
   );
 };

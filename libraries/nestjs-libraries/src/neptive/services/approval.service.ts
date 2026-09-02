@@ -183,29 +183,11 @@ export class NeptiveApprovalService {
     }
 
     if (body.status === 'APPROVED') {
-      await this.postiz.changeGroupPublishAuthorization(
-        orgId,
-        approval.postGroup,
-        true
-      );
       await this.activities.system(orgId, customerId, {
         type: 'POST_APPROVED',
         title: `Content approved${approval.title ? `: ${approval.title}` : ''}`,
         relatedPostGroup: approval.postGroup,
       });
-      await this.activities.system(orgId, customerId, {
-        type: 'POST_SCHEDULED',
-        title: 'Approved content authorized for scheduling',
-        relatedPostGroup: approval.postGroup,
-      });
-    }
-
-    if (body.status === 'CHANGES_REQUESTED' || body.status === 'REJECTED') {
-      await this.postiz.changeGroupPublishAuthorization(
-        orgId,
-        approval.postGroup,
-        false
-      );
     }
 
     return this.get(orgId, customerId, id);

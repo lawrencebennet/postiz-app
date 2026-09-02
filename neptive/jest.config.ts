@@ -18,6 +18,12 @@ const config: Config = {
       },
     ],
   },
+  moduleNameMapper: {
+    '^@gitroom/nestjs-libraries/neptive/(.*)$': '<rootDir>/$1',
+    '^@gitroom/nestjs-libraries/(.*)$': '<rootDir>/../$1',
+    '^@gitroom/nestjs-libraries/database/(.*)$': '<rootDir>/../database/$1',
+    '^@gitroom/helpers/(.*)$': '<rootDir>/../../../helpers/src/$1',
+  },
 };
 
 export default config;

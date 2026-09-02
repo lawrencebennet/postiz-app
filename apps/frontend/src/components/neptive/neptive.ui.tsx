@@ -150,5 +150,5 @@ export const nextPedActions = (status: string): NeptiveNextAction[] =>
   (NEPTIVE_PED_TRANSITIONS[status] || []).map((next) => ({
     status: next,
     label: PED_ACTION_LABELS[next] || next,
-    needsComment: false,
+    needsComment: next === 'CHANGES_REQUESTED',
   }));

@@ -19,6 +19,9 @@ import {
   statusTone,
 } from '@gitroom/frontend/components/neptive/neptive.ui';
 import clsx from 'clsx';
+import { PedCalendar, PedContentList, pedSummary } from '@gitroom/frontend/components/neptive/ped-calendar';
+import { PedCalendarItem } from '@gitroom/frontend/components/neptive/ped-content-card';
+import { PedContentDetail } from '@gitroom/frontend/components/neptive/ped-content-detail';
 
 const NAV = [
   { href: '/portal', label: 'Overview' },
@@ -192,58 +195,85 @@ export const PortalOverview = () => {
 export const PortalPeds = () => {
   const { data, mutate } = useNeptivePortal('peds');
   const fetch = useFetch();
+  const [selectedItem, setSelectedItem] = useState<PedCalendarItem | null>(null);
+  const [pedComment, setPedComment] = useState('');
+  const [busy, setBusy] = useState(false);
   const transition = useCallback(
     async (id: string, status: string) => {
-      const response = await fetch(`/neptive/portal/peds/${id}/transition`, {
-        method: 'POST',
-        body: JSON.stringify({ status }),
-      });
-      if (response.ok) {
-        await mutate();
+      setBusy(true);
+      try {
+        const response = await fetch(`/neptive/portal/peds/${id}/transition`, {
+          method: 'POST',
+          body: JSON.stringify({ status, comment: pedComment || undefined }),
+        });
+        if (response.ok) {
+          setPedComment('');
+          await mutate();
+        }
+      } finally {
+        setBusy(false);
       }
     },
-    [fetch, mutate]
+    [fetch, mutate, pedComment]
   );
+  const reviewContent = useCallback(async (status: string, comment?: string) => {
+    if (!selectedItem?.approval?.id) return;
+    setBusy(true);
+    try {
+      const response = await fetch(`/neptive/portal/approvals/${selectedItem.approval.id}/transition`, {
+        method: 'POST',
+        body: JSON.stringify({ status, comment }),
+      });
+      if (response.ok) {
+        setSelectedItem(null);
+        await mutate();
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [fetch, mutate, selectedItem]);
   return (
-    <NeptiveCard title="Editorial plans">
-      {(data || []).map((ped: any) => (
-        <div key={ped.id} className="py-[12px] border-b border-newTableBorder">
-          <div className="flex items-center gap-[8px] flex-wrap">
-            <div className="font-[600]">{ped.name}</div>
-            <NeptiveBadge tone={statusTone(ped.status)}>{ped.status}</NeptiveBadge>
+    <div className="flex flex-col gap-[12px]">
+      {(data || []).map((ped: any) => {
+        const items = (ped.items || []) as PedCalendarItem[];
+        const summary = pedSummary(items);
+        return (
+          <div key={ped.id} className="flex flex-col gap-[12px]">
+            <NeptiveCard>
+              <div className="flex items-start justify-between gap-[12px] flex-wrap">
+                <div>
+                  <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText">Piano editoriale</div>
+                  <div className="text-[24px] font-[700]">{ped.name}</div>
+                  <div className="text-[12px] text-newTableText">{ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}</div>
+                </div>
+                <NeptiveBadge tone={statusTone(ped.status)}>{ped.status}</NeptiveBadge>
+              </div>
+              {ped.objectives && <div className="text-[13px] mt-[10px] whitespace-pre-wrap">{ped.objectives}</div>}
+              <div className="flex flex-wrap gap-[6px] mt-[12px]">
+                <NeptiveBadge>{summary.total} contenuti</NeptiveBadge>
+                <NeptiveBadge>{summary.carousels} caroselli</NeptiveBadge>
+                <NeptiveBadge>{summary.reels} reel</NeptiveBadge>
+                <NeptiveBadge>{summary.posts} post</NeptiveBadge>
+                <NeptiveBadge>{summary.stories} stories</NeptiveBadge>
+              </div>
+              {ped.status === 'CLIENT_REVIEW' && (
+                <div className="mt-[14px] flex flex-col gap-[8px]">
+                  <textarea className={areaClass} placeholder="Commento generale o richiesta di modifica" value={pedComment} onChange={(event) => setPedComment(event.target.value)} />
+                  <div className="flex gap-[8px] flex-wrap">
+                    <Button onClick={() => transition(ped.id, 'APPROVED')} disabled={busy}>Approva piano editoriale</Button>
+                    <Button secondary onClick={() => { if (pedComment.trim()) transition(ped.id, 'CHANGES_REQUESTED'); }} disabled={busy || !pedComment.trim()}>Richiedi modifica</Button>
+                  </div>
+                </div>
+              )}
+            </NeptiveCard>
+            <PedCalendar items={items} periodStart={ped.periodStart} periodEnd={ped.periodEnd} onOpen={setSelectedItem} />
+            <PedContentList items={items} onOpen={setSelectedItem} />
           </div>
-          <div className="text-[12px] text-newTableText">
-            {ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}
-          </div>
-          {ped.objectives && (
-            <div className="text-[13px] mt-[6px] whitespace-pre-wrap">
-              {ped.objectives}
-            </div>
-          )}
-          {(ped.items || []).length > 0 && (
-            <ul className="mt-[8px] text-[13px] list-disc pl-[18px]">
-              {ped.items.map((item: any) => (
-                <li key={item.id}>{item.title}</li>
-              ))}
-            </ul>
-          )}
-          {ped.status === 'CLIENT_REVIEW' && (
-            <div className="flex gap-[6px] mt-[8px]">
-              <Button onClick={() => transition(ped.id, 'APPROVED')}>
-                Approve
-              </Button>
-              <Button
-                secondary={true}
-                onClick={() => transition(ped.id, 'CHANGES_REQUESTED')}
-              >
-                Request changes
-              </Button>
-            </div>
-          )}
-        </div>
-      ))}
-      {!data?.length && <NeptiveEmpty>No plans yet</NeptiveEmpty>}
-    </NeptiveCard>
+        );
+      })}
+      {!data?.length && <NeptiveCard title="Piani editoriali"><NeptiveEmpty>Nessun piano editoriale</NeptiveEmpty></NeptiveCard>}
+      <PedContentDetail item={selectedItem} mode="client" onClose={() => setSelectedItem(null)} onApprove={() => reviewContent('APPROVED')} onRequestChanges={(comment) => reviewContent('CHANGES_REQUESTED', comment)} busy={busy} />
+    </div>
   );
 };
 

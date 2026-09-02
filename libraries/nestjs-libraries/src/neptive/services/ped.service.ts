@@ -13,6 +13,7 @@ import { NeptiveClientService } from '@gitroom/nestjs-libraries/neptive/services
 import { NeptiveActivityService } from '@gitroom/nestjs-libraries/neptive/services/activity.service';
 import { canTransitionPed } from '@gitroom/nestjs-libraries/neptive/domain/state-machines';
 import { notFoundIfMissing } from '@gitroom/nestjs-libraries/neptive/domain/scope';
+import { pedReviewUpdate } from '@gitroom/nestjs-libraries/neptive/domain/ped-review';
 import {
   CreateNeptivePedDto,
   CreateNeptivePedItemDto,
@@ -175,13 +176,10 @@ export class NeptivePedService {
     if (!canTransitionPed(ped.status, body.status)) {
       throw new BadRequestException('Invalid PED transition');
     }
-    const extra =
-      body.status === 'APPROVED'
-        ? {
-            approvedAt: new Date(),
-            approvedByClientUserId: clientUserId || null,
-          }
-        : {};
+    if (body.status === 'CHANGES_REQUESTED' && !body.comment?.trim()) {
+      throw new BadRequestException('A comment is required');
+    }
+    const extra = pedReviewUpdate(body.status, body.comment, clientUserId);
     const updated = await this.repo.transitionPed(
       orgId,
       customerId,
@@ -210,6 +208,13 @@ export class NeptivePedService {
     body: CreateNeptivePedItemDto
   ) {
     const ped = await this.getOrForbid(orgId, customerId, id);
+    if (body.postGroup) {
+      await this.postiz.assertPostGroupBelongsToCustomer(
+        orgId,
+        customerId,
+        body.postGroup
+      );
+    }
     return this.repo.addPedItem({
       planId: ped.id,
       title: body.title,
