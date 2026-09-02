@@ -74,6 +74,37 @@ async function main() {
   });
   if (!customer) throw new Error('Casa Pandora customer not found');
 
+  const profile = await prisma.neptiveClientProfile.findUnique({
+    where: { customerId: customer.id },
+  });
+  const existingBranding =
+    profile?.branding && typeof profile.branding === 'object' && !Array.isArray(profile.branding)
+      ? profile.branding
+      : {};
+  await prisma.neptiveClientProfile.upsert({
+    where: { customerId: customer.id },
+    create: {
+      orgId: customer.orgId,
+      customerId: customer.id,
+      branding: {
+        ...existingBranding,
+        previewIdentity: {
+          instagramName: 'casa_pandora_',
+          facebookName: 'Casa Pandora - Arezzo',
+        },
+      },
+    },
+    update: {
+      branding: {
+        ...existingBranding,
+        previewIdentity: {
+          instagramName: 'casa_pandora_',
+          facebookName: 'Casa Pandora - Arezzo',
+        },
+      },
+    },
+  });
+
   // Keep the earlier smoke-test PED out of the client-facing demo so the
   // September calendar is the single, unambiguous review surface.
   await prisma.neptiveEditorialPlan.updateMany({

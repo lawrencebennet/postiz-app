@@ -3,8 +3,8 @@ import { normalizePreviewIdentity } from './preview-identity';
 describe('Neptive preview identity', () => {
   it('returns safe platform defaults when identity is missing', () => {
     expect(normalizePreviewIdentity(undefined)).toEqual({
-      instagram: { name: 'Instagram profile', image: null },
-      facebook: { name: 'Facebook page', image: null },
+      instagram: { name: 'casa_pandora_', image: null },
+      facebook: { name: 'Casa Pandora - Arezzo', image: null },
     });
   });
 

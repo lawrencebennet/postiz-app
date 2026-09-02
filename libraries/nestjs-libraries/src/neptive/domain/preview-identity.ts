@@ -29,14 +29,14 @@ export function normalizePreviewIdentity(
     instagram: {
       name: nameOrDefault(
         instagram?.name ?? source?.instagramName,
-        'Instagram profile'
+        'casa_pandora_'
       ),
       image: valueOrNull(instagram?.image ?? source?.instagramImage),
     },
     facebook: {
       name: nameOrDefault(
         facebook?.name ?? source?.facebookName,
-        'Facebook page'
+        'Casa Pandora - Arezzo'
       ),
       image: valueOrNull(facebook?.image ?? source?.facebookImage),
     },
