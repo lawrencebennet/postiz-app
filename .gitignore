@@ -8,6 +8,7 @@ tmp
 .apple
 # dependencies
 node_modules
+.worktrees/
 
 # IDEs and editors
 /.idea
