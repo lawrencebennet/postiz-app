@@ -96,7 +96,7 @@ export class NeptivePortalController {
 
   @Get('/peds')
   pedsList(@GetNeptivePortal() portal: NeptivePortalIdentity) {
-    return this.peds.list(portal.orgId, portal.customerId);
+    return this.peds.listForPortal(portal.orgId, portal.customerId);
   }
 
   @Get('/peds/:id')
@@ -104,7 +104,7 @@ export class NeptivePortalController {
     @GetNeptivePortal() portal: NeptivePortalIdentity,
     @Param('id') id: string
   ) {
-    return this.peds.getOrForbid(portal.orgId, portal.customerId, id);
+    return this.peds.getForPortal(portal.orgId, portal.customerId, id);
   }
 
   @Post('/peds/:id/transition')

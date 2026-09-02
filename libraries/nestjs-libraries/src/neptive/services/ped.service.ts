@@ -3,8 +3,12 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
-import { NeptiveEditorialPlanStatus } from '@prisma/client';
+import {
+  NeptiveEditorialPlanStatus,
+  type NeptiveEditorialPlan,
+} from '@prisma/client';
 import { NeptiveRepository } from '@gitroom/nestjs-libraries/neptive/repositories/neptive.repository';
+import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import { NeptiveClientService } from '@gitroom/nestjs-libraries/neptive/services/client.service';
 import { NeptiveActivityService } from '@gitroom/nestjs-libraries/neptive/services/activity.service';
 import { canTransitionPed } from '@gitroom/nestjs-libraries/neptive/domain/state-machines';
@@ -21,17 +25,99 @@ export class NeptivePedService {
   constructor(
     private repo: NeptiveRepository,
     private clients: NeptiveClientService,
-    private activities: NeptiveActivityService
+    private activities: NeptiveActivityService,
+    private postiz: PostizAdapter
   ) {}
+
+  private async projectPlan(
+    plan: NeptiveEditorialPlan & { items: Array<any> },
+    includeInternal: boolean
+  ) {
+    const items = await Promise.all(
+      plan.items.map(async (item) => {
+        const approval = item.postGroup
+          ? await this.repo.approvalByGroup(plan.orgId, item.postGroup)
+          : null;
+        let content = null;
+        let linkStatus = item.postGroup ? 'MISSING' : 'UNLINKED';
+        if (item.postGroup) {
+          try {
+            content = await this.postiz.contentByGroup(
+              plan.orgId,
+              plan.customerId,
+              item.postGroup,
+              item.title
+            );
+            linkStatus = 'LINKED';
+          } catch {
+            // Keep stale links visible to agency users for repair, but never
+            // expose a foreign group or its media to a client.
+          }
+        }
+        const safeApproval = approval
+          ? {
+              id: approval.id,
+              status: approval.status,
+              submittedAt: approval.submittedAt,
+              approvedAt: approval.approvedAt,
+              requestedChangesNote: approval.requestedChangesNote,
+              rejectedNote: approval.rejectedNote,
+              comments: approval.comments
+                .filter(
+                  (comment) =>
+                    includeInternal || comment.visibility === 'CLIENT_VISIBLE'
+                )
+                .map((comment) => ({
+                  id: comment.id,
+                  authorName: comment.authorName,
+                  body: comment.body,
+                  visibility: comment.visibility,
+                  createdAt: comment.createdAt,
+                })),
+            }
+          : null;
+        return {
+          ...item,
+          ...(includeInternal ? {} : { notes: undefined }),
+          content,
+          linkStatus,
+          approval: safeApproval,
+        };
+      })
+    );
+    return {
+      ...plan,
+      ...(includeInternal ? {} : { notes: undefined }),
+      items,
+    };
+  }
 
   async list(orgId: string, customerId: string) {
     await this.clients.assertCustomer(orgId, customerId);
-    return this.repo.listPeds(orgId, customerId);
+    const plans = await this.repo.listPeds(orgId, customerId);
+    return Promise.all(plans.map((plan) => this.projectPlan(plan, true)));
+  }
+
+  async listForPortal(orgId: string, customerId: string) {
+    await this.clients.assertCustomer(orgId, customerId);
+    const plans = await this.repo.listPeds(orgId, customerId);
+    return Promise.all(plans.map((plan) => this.projectPlan(plan, false)));
   }
 
   async get(orgId: string, customerId: string, id: string) {
     await this.clients.assertCustomer(orgId, customerId);
-    return notFoundIfMissing(await this.repo.pedById(orgId, customerId, id));
+    return this.projectPlan(
+      notFoundIfMissing(await this.repo.pedById(orgId, customerId, id)),
+      true
+    );
+  }
+
+  async getForPortal(orgId: string, customerId: string, id: string) {
+    await this.clients.assertCustomer(orgId, customerId);
+    return this.projectPlan(
+      notFoundIfMissing(await this.repo.pedById(orgId, customerId, id)),
+      false
+    );
   }
 
   async getOrForbid(orgId: string, customerId: string, id: string) {

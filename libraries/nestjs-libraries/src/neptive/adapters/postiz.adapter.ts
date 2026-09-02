@@ -6,6 +6,11 @@ import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/me
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
 import { expandPostsList } from '@gitroom/helpers/utils/posts.list.minify';
 import { postPreviewText } from '@gitroom/nestjs-libraries/neptive/domain/post-preview';
+import {
+  projectPostGroup,
+  type NeptiveContentProjection,
+  type ProjectionPost,
+} from '@gitroom/nestjs-libraries/neptive/domain/content-projection';
 
 @Injectable()
 export class PostizAdapter {
@@ -39,6 +44,21 @@ export class PostizAdapter {
     return this.prisma.post.findMany({
       where: { organizationId: orgId, group, deletedAt: null },
       include: { integration: true },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async contentByGroup(
+    orgId: string,
+    customerId: string,
+    postGroup: string,
+    title?: string
+  ): Promise<NeptiveContentProjection> {
+    const posts = await this.postsByGroup(orgId, postGroup);
+    return projectPostGroup(posts as ProjectionPost[], {
+      orgId,
+      customerId,
+      title,
     });
   }
 
