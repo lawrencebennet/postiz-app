@@ -75,12 +75,14 @@ Password: NeptiveVal1d!
 4. Usare il **Calendario mensile** per verificare date, orari, miniature, piattaforma, tipo e stato.
 5. Usare **Contenuti in ordine cronologico** per la revisione completa del mese.
 6. Aprire una scheda: la finestra mostra media esatti, caption, canale, programmazione, stato Postiz e stato approvazione.
-7. Nel carosello usare miniature numerate e frecce: l’ordine è quello dell’array media di Postiz.
-8. Nel Reel usare il player video HTML5 con controlli; non c’è autoplay con audio.
-9. Per aggiungere contenuto usare **+ Aggiungi contenuto** e selezionare un gruppo Postiz esistente. Il composer, l’upload e la programmazione continuano a essere gestiti da Postiz.
-10. Per creare un nuovo contenuto aprire il composer nativo Postiz, completare normalmente media/caption/canale/data, quindi collegare il relativo `postGroup` al PED.
-11. Usare **Invia al cliente** per portare il PED in revisione cliente. Questo non pubblica nulla.
-12. Monitorare direttamente nel PED le approvazioni e i feedback; i commenti interni restano visibili solo all’agency.
+7. Dalla tab **Overview**, compilare **Identità delle anteprime** per impostare nome e immagine profilo Instagram e pagina Facebook. Sono dati grafici del preview e non modificano gli account Postiz.
+8. Nel carosello usare trascinamento con mouse, swipe touch, frecce, pallini e miniature numerate: l’ordine è quello dell’array media di Postiz. La fascia **Continuità del carosello** consente di valutare rapidamente l’allineamento delle slide.
+9. Usare **Instagram preview** per il feed scuro Instagram e **Facebook preview** per il feed della pagina; da Facebook è disponibile anche **Apri dettaglio Facebook**.
+10. Nel Reel usare il player video HTML5 con controlli; non c’è autoplay con audio. Lo stesso vale per video e gallerie Facebook.
+11. Per aggiungere contenuto usare **+ Aggiungi contenuto** e selezionare un gruppo Postiz esistente. Il composer, l’upload e la programmazione continuano a essere gestiti da Postiz.
+12. Per creare un nuovo contenuto aprire il composer nativo Postiz, completare normalmente media/caption/canale/data, quindi collegare il relativo `postGroup` al PED.
+13. Usare **Invia al cliente** per portare il PED in revisione cliente. Questo non pubblica nulla.
+14. Monitorare direttamente nel PED le approvazioni e i feedback; i commenti interni restano visibili solo all’agency.
 
 ## Flusso cliente
 
@@ -97,9 +99,10 @@ Accesso: magic link monouso, senza password Postiz
 4. Verificare l’intestazione **Casa Pandora · Piano editoriale · Settembre 2026** e il riepilogo dei contenuti.
 5. Passare dal calendario alla lista cronologica; su telefono viene usata automaticamente la lista verticale.
 6. Aprire ogni contenuto e verificare anteprima, carosello completo, ordine slide, video, caption, data/ora, canale e stato.
-7. Su un contenuto in **In attesa di approvazione** premere **Approva contenuto**.
-8. Su un altro contenuto compilare il commento e premere **Richiedi modifica**. Il feedback viene salvato nel PED e mostrato all’agency.
-9. Quando il PED è in revisione, usare anche l’azione di approvazione complessiva. L’approvazione non cambia la programmazione e non pubblica automaticamente.
+7. Nella finestra usare **Instagram preview** o **Facebook preview**. Il carosello è trascinabile/swipabile e mostra la paginazione; **Continuità del carosello** mostra tutte le slide nell’ordine Postiz. Facebook offre inoltre il dettaglio esteso.
+8. Su un contenuto in **In attesa di approvazione** premere **Approva contenuto**.
+9. Su un altro contenuto compilare il commento e premere **Richiedi modifica**. Il feedback viene salvato nel PED e mostrato all’agency.
+10. Quando il PED è in revisione, usare anche l’azione di approvazione complessiva. L’approvazione non cambia la programmazione e non pubblica automaticamente.
 
 Il cliente vede solo dati del proprio `customerId`: PED, contenuti Postiz collegati, media, approvazioni e commenti autorizzati. Non usare parametri URL come meccanismo di autorizzazione.
 

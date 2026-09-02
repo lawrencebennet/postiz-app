@@ -52,6 +52,7 @@ describe('Neptive Postiz content projection', () => {
     expect(result.media[2].type).toBe('video');
     expect(result.title).toBe('Camera Deluxe');
     expect(result.caption).toContain('Caption demo');
+    expect(result.profileImage).toBe('https://cdn.test/profile.jpg');
   });
 
   it('classifies a single Instagram video as a Reel and a Story as Story', () => {

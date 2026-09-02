@@ -34,6 +34,7 @@ import {
   TransitionNeptiveApprovalDto,
   TransitionNeptivePedDto,
   UpdateNeptiveClientDto,
+  UpdateNeptivePreviewIdentityDto,
   UpdateNeptivePedDto,
   UpdateNeptiveStrategyDto,
 } from '@gitroom/nestjs-libraries/neptive/dto/neptive.dto';
@@ -81,6 +82,15 @@ export class NeptiveAgencyController {
     @Body() body: UpdateNeptiveClientDto
   ) {
     return this.clients.update(org.id, customerId, body);
+  }
+
+  @Put('/clients/:customerId/preview-identity')
+  updatePreviewIdentity(
+    @GetOrgFromRequest() org: Organization,
+    @Param('customerId') customerId: string,
+    @Body() body: UpdateNeptivePreviewIdentityDto
+  ) {
+    return this.clients.updatePreviewIdentity(org.id, customerId, body);
   }
 
   @Delete('/clients/:customerId')

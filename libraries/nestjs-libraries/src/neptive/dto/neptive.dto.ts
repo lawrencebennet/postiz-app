@@ -36,6 +36,24 @@ export class UpdateNeptiveClientDto {
   notes?: string;
 }
 
+export class UpdateNeptivePreviewIdentityDto {
+  @IsOptional()
+  @IsString()
+  instagramName?: string;
+
+  @IsOptional()
+  @IsString()
+  instagramImage?: string;
+
+  @IsOptional()
+  @IsString()
+  facebookName?: string;
+
+  @IsOptional()
+  @IsString()
+  facebookImage?: string;
+}
+
 export class InviteNeptiveClientUserDto {
   @IsEmail()
   email: string;

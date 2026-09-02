@@ -14,6 +14,11 @@ import {
   UpdateNeptiveClientDto,
 } from '@gitroom/nestjs-libraries/neptive/dto/neptive.dto';
 import { notFoundIfMissing } from '@gitroom/nestjs-libraries/neptive/domain/scope';
+import {
+  normalizePreviewIdentity,
+  previewIdentityInput,
+  type PreviewIdentityInput,
+} from '@gitroom/nestjs-libraries/neptive/domain/preview-identity';
 
 @Injectable()
 export class NeptiveClientService {
@@ -68,6 +73,15 @@ export class NeptiveClientService {
       website: profile.website,
       notes: profile.notes,
       branding: profile.branding,
+      previewIdentity: normalizePreviewIdentity(
+        previewIdentityInput(
+          profile.branding &&
+            typeof profile.branding === 'object' &&
+            !Array.isArray(profile.branding)
+            ? (profile.branding as Record<string, unknown>).previewIdentity
+            : undefined
+        )
+      ),
       channels: channels.map((channel) => ({
         id: channel.id,
         name: channel.name,
@@ -83,6 +97,49 @@ export class NeptiveClientService {
         lastLoginAt: user.lastLoginAt,
       })),
     };
+  }
+
+  async previewIdentity(orgId: string, customerId: string) {
+    await this.assertCustomer(orgId, customerId);
+    const profile = await this.repo.profileByCustomer(orgId, customerId);
+    const branding =
+      profile?.branding &&
+      typeof profile.branding === 'object' &&
+      !Array.isArray(profile.branding)
+        ? (profile.branding as Record<string, unknown>)
+        : {};
+    return normalizePreviewIdentity(
+      previewIdentityInput(branding.previewIdentity)
+    );
+  }
+
+  async updatePreviewIdentity(
+    orgId: string,
+    customerId: string,
+    input: PreviewIdentityInput
+  ) {
+    await this.assertCustomer(orgId, customerId);
+    const profile = await this.repo.profileByCustomer(orgId, customerId);
+    const existingBranding =
+      profile?.branding &&
+      typeof profile.branding === 'object' &&
+      !Array.isArray(profile.branding)
+        ? (profile.branding as Record<string, unknown>)
+        : {};
+    const source = previewIdentityInput(input);
+    const stored = Object.fromEntries(
+      Object.entries(source).map(([key, value]) => [
+        key,
+        typeof value === 'string' ? value.trim() || null : null,
+      ])
+    );
+    await this.repo.upsertProfile(orgId, customerId, {
+      branding: {
+        ...existingBranding,
+        previewIdentity: stored,
+      },
+    });
+    return this.previewIdentity(orgId, customerId);
   }
 
   async create(orgId: string, body: CreateNeptiveClientDto) {

@@ -10,6 +10,7 @@ import { NeptiveActivityService } from '@gitroom/nestjs-libraries/neptive/servic
 import { NeptiveStrategyService } from '@gitroom/nestjs-libraries/neptive/services/strategy.service';
 import { NeptiveDeliverableService } from '@gitroom/nestjs-libraries/neptive/services/deliverable.service';
 import { NeptiveReportService } from '@gitroom/nestjs-libraries/neptive/services/report.service';
+import { NeptiveClientService } from '@gitroom/nestjs-libraries/neptive/services/client.service';
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import {
   GetNeptivePortal,
@@ -63,6 +64,7 @@ export class NeptivePortalAuthController {
 export class NeptivePortalController {
   constructor(
     private prisma: PrismaService,
+    private clients: NeptiveClientService,
     private dashboard: NeptiveDashboardService,
     private peds: NeptivePedService,
     private approvals: NeptiveApprovalService,
@@ -87,6 +89,11 @@ export class NeptivePortalController {
       role: portal.role,
       customerId: portal.customerId,
     };
+  }
+
+  @Get('/preview-identity')
+  previewIdentity(@GetNeptivePortal() portal: NeptivePortalIdentity) {
+    return this.clients.previewIdentity(portal.orgId, portal.customerId);
   }
 
   @Get('/dashboard')

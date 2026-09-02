@@ -18,7 +18,8 @@ export type PedCalendarItem = {
     channel: string;
     scheduledAt: string;
     contentType: string;
-    media: Array<{ path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
+    profileImage?: string | null;
+    media: Array<{ id: string; path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
     publishingState: string;
     variants?: Array<{
       postId: string;
@@ -27,7 +28,8 @@ export type PedCalendarItem = {
       caption: string;
       scheduledAt: string;
       contentType: string;
-      media: Array<{ path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
+      profileImage?: string | null;
+      media: Array<{ id: string; path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
       publishingState: string;
     }>;
   } | null;

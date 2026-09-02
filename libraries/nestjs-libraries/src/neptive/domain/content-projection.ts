@@ -13,6 +13,7 @@ export type ProjectionVariant = {
   postId: string;
   platform: string;
   channel: string;
+  profileImage?: string | null;
   caption: string;
   scheduledAt: string;
   contentType: NeptiveContentType;
@@ -35,6 +36,7 @@ export type NeptiveContentProjection = {
   platform: string;
   platforms: string[];
   channel: string;
+  profileImage?: string | null;
   scheduledAt: string;
   contentType: NeptiveContentType;
   media: ProjectionMedia[];
@@ -144,6 +146,9 @@ function projectVariant(post: ProjectionPost): ProjectionVariant {
     postId: post.id,
     platform: post.integration.providerIdentifier,
     channel: post.integration.name,
+    ...(post.integration.picture
+      ? { profileImage: post.integration.picture }
+      : {}),
     caption: postPreviewText(post.content),
     scheduledAt: new Date(post.publishDate).toISOString(),
     contentType: contentTypeOf(post, media),
@@ -183,6 +188,7 @@ export function projectPostGroup(
     platform: primary.platform,
     platforms,
     channel: primary.channel,
+    ...(primary.profileImage ? { profileImage: primary.profileImage } : {}),
     scheduledAt: primary.scheduledAt,
     contentType: primary.contentType,
     media: primary.media,

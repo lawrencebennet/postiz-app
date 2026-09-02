@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@gitroom/react/form/button';
@@ -118,7 +118,8 @@ const OverviewPanel = ({ customerId }: { customerId: string }) => {
     ? data.upcoming
     : data?.upcoming?.posts || [];
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[12px]">
+    <div className="flex flex-col gap-[12px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[12px]">
       <NeptiveCard title="Current PED">
         {data?.currentPed ? (
           <div>
@@ -164,7 +165,64 @@ const OverviewPanel = ({ customerId }: { customerId: string }) => {
           <NeptiveEmpty>No activities logged</NeptiveEmpty>
         )}
       </NeptiveCard>
+      </div>
+      <PreviewIdentityPanel customerId={customerId} />
     </div>
+  );
+};
+
+const PreviewIdentityPanel = ({ customerId }: { customerId: string }) => {
+  const { data: client, mutate } = useNeptiveClient(customerId);
+  const fetch = useFetch();
+  const toaster = useToaster();
+  const [values, setValues] = useState({
+    instagramName: '',
+    instagramImage: '',
+    facebookName: '',
+    facebookImage: '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const identity = client?.previewIdentity;
+    if (!identity) return;
+    setValues({
+      instagramName: identity.instagram?.name || '',
+      instagramImage: identity.instagram?.image || '',
+      facebookName: identity.facebook?.name || '',
+      facebookImage: identity.facebook?.image || '',
+    });
+  }, [client?.previewIdentity]);
+
+  const save = useCallback(async () => {
+    setSaving(true);
+    try {
+      const response = await fetch(`/neptive/agency/clients/${customerId}/preview-identity`, {
+        method: 'PUT',
+        body: JSON.stringify(values),
+      });
+      if (!response.ok) {
+        toaster.show('Impossibile salvare l’identità preview', 'warning');
+        return;
+      }
+      await mutate();
+      toaster.show('Identità preview salvata', 'success');
+    } finally {
+      setSaving(false);
+    }
+  }, [customerId, fetch, mutate, toaster, values]);
+
+  return (
+    <NeptiveCard title="Identità delle anteprime">
+      <div className="mb-[12px] text-[12px] text-newTableText">Configura il nome e l’immagine che il cliente vedrà nei mockup Instagram e Facebook. Non modifica gli account Postiz né le credenziali social.</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px]">
+        <NeptiveField label="Nome profilo Instagram"><input className={fieldClass} value={values.instagramName} onChange={(e) => setValues((current) => ({ ...current, instagramName: e.target.value }))} placeholder="Casa Pandora" /></NeptiveField>
+        <NeptiveField label="Immagine profilo Instagram (URL)"><input className={fieldClass} value={values.instagramImage} onChange={(e) => setValues((current) => ({ ...current, instagramImage: e.target.value }))} placeholder="https://…" /></NeptiveField>
+        <NeptiveField label="Nome pagina Facebook"><input className={fieldClass} value={values.facebookName} onChange={(e) => setValues((current) => ({ ...current, facebookName: e.target.value }))} placeholder="Casa Pandora" /></NeptiveField>
+        <NeptiveField label="Immagine pagina Facebook (URL)"><input className={fieldClass} value={values.facebookImage} onChange={(e) => setValues((current) => ({ ...current, facebookImage: e.target.value }))} placeholder="https://…" /></NeptiveField>
+      </div>
+      <div className="mt-[12px]"><Button onClick={save} disabled={saving}>{saving ? 'Salvataggio…' : 'Salva identità preview'}</Button></div>
+    </NeptiveCard>
   );
 };
 
@@ -173,6 +231,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
   const toaster = useToaster();
   const { data, mutate } = useNeptiveAgencyList(customerId, 'peds');
   const { data: postsData } = useNeptiveAgencyList(customerId, 'posts?state=all');
+  const { data: client } = useNeptiveClient(customerId);
   const [name, setName] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
@@ -338,7 +397,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
           <Button onClick={create}>Create PED</Button>
         </div>
       </NeptiveCard>
-      <PedContentDetail item={selectedItem} mode="agency" onClose={() => setSelectedItem(null)} />
+      <PedContentDetail item={selectedItem} mode="agency" previewIdentity={client?.previewIdentity} onClose={() => setSelectedItem(null)} />
     </div>
   );
 };

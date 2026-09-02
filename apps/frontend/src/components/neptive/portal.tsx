@@ -194,6 +194,7 @@ export const PortalOverview = () => {
 
 export const PortalPeds = () => {
   const { data, mutate } = useNeptivePortal('peds');
+  const { data: previewIdentity } = useNeptivePortal('preview-identity');
   const fetch = useFetch();
   const [selectedItem, setSelectedItem] = useState<PedCalendarItem | null>(null);
   const [pedComment, setPedComment] = useState('');
@@ -272,7 +273,7 @@ export const PortalPeds = () => {
         );
       })}
       {!data?.length && <NeptiveCard title="Piani editoriali"><NeptiveEmpty>Nessun piano editoriale</NeptiveEmpty></NeptiveCard>}
-      <PedContentDetail item={selectedItem} mode="client" onClose={() => setSelectedItem(null)} onApprove={() => reviewContent('APPROVED')} onRequestChanges={(comment) => reviewContent('CHANGES_REQUESTED', comment)} busy={busy} />
+      <PedContentDetail item={selectedItem} mode="client" previewIdentity={previewIdentity} onClose={() => setSelectedItem(null)} onApprove={() => reviewContent('APPROVED')} onRequestChanges={(comment) => reviewContent('CHANGES_REQUESTED', comment)} busy={busy} />
     </div>
   );
 };
