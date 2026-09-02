@@ -32,7 +32,7 @@ L’account agency di test sarà un utente locale `SUPERADMIN` della prima Organ
 | Service | URL/port | Purpose |
 |---|---:|---|
 | Frontend | `http://localhost:4200` | Agency UI and client portal |
-| Backend | `http://localhost:3000` | API |
+| Backend | `http://localhost:3001` | API; `3000` is occupied by an unrelated local service |
 | Orchestrator | `3002` | Temporal worker/process |
 | Postiz Postgres | `localhost:5434` | Application database |
 | Redis | `localhost:6379` | Cache/queues |
@@ -54,4 +54,3 @@ L’account agency di test sarà un utente locale `SUPERADMIN` della prima Organ
 6. Confirm the generated magic link can be previewed and consumed once.
 7. Confirm the client portal `/portal` shows the Casa Pandora identity and PED scope.
 8. Run the Neptive isolation tests and report any unrelated upstream failures separately.
-

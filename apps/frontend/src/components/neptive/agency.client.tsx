@@ -346,7 +346,7 @@ const ApprovalsPanel = ({ customerId }: { customerId: string }) => {
   const { data: postsData } = useNeptiveAgencyList(customerId, 'posts?state=all');
   const [postGroup, setPostGroup] = useState('');
   const posts = postsData?.posts || [];
-  const groups = [];
+  const groups: any[] = [];
   const seen = new Set<string>();
   for (const post of posts) {
     if (!post.group || seen.has(post.group) || post.state === 'PUBLISHED') {

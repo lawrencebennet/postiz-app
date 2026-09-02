@@ -30,7 +30,7 @@
 - Consumes: `neptive/env.local.example`, `.env.example`, `package.json`, `pnpm-lock.yaml`.
 - Produces: a Node 22 + PNPM 10.6.1 shell and local environment values consumed by Prisma, Nest, Next, and Temporal.
 
-- [ ] **Step 1: Select the required Node version.**
+- [x] **Step 1: Select the required Node version.**
 
 Run from the Neptive worktree:
 
@@ -41,7 +41,7 @@ mise exec node@22.12.0 pnpm@10.6.1 -- node --version
 
 Expected: Node reports `v22.12.x`.
 
-- [ ] **Step 2: Enable PNPM 10.6.1.**
+- [x] **Step 2: Enable PNPM 10.6.1.**
 
 Run:
 
@@ -51,7 +51,7 @@ mise exec node@22.12.0 pnpm@10.6.1 -- pnpm --version
 
 Expected: `10.6.1`.
 
-- [ ] **Step 3: Create the local environment file.**
+- [x] **Step 3: Create the local environment file.**
 
 Copy `.env.example` to `.env` and set these exact local values, retaining optional provider variables empty:
 
@@ -60,8 +60,8 @@ DATABASE_URL="postgresql://postiz-local:postiz-local-pwd@localhost:5434/postiz-d
 REDIS_URL="redis://localhost:6379"
 JWT_SECRET="<generated local secret>"
 FRONTEND_URL="http://localhost:4200"
-NEXT_PUBLIC_BACKEND_URL="http://localhost:3000"
-BACKEND_INTERNAL_URL="http://localhost:3000"
+NEXT_PUBLIC_BACKEND_URL="http://localhost:3001"
+BACKEND_INTERNAL_URL="http://localhost:3001"
 TEMPORAL_ADDRESS="localhost:7233"
 NOT_SECURED="true"
 STORAGE_PROVIDER="local"
@@ -71,7 +71,7 @@ DISABLE_REGISTRATION="false"
 
 Expected: `.env` exists and `git status --short --ignored .env` reports it as ignored.
 
-- [ ] **Step 4: Install dependencies.**
+- [x] **Step 4: Install dependencies.**
 
 Run:
 
@@ -90,29 +90,29 @@ Expected: PNPM completes without changing `pnpm-lock.yaml`.
 - Consumes: `.env` and `neptive/docker-compose.dev.override.yaml`.
 - Produces: reachable Postgres on `localhost:5434`, Redis on `localhost:6379`, Temporal on `localhost:7233`, and a generated Prisma client with Neptive models.
 
-- [ ] **Step 1: Start only the required infrastructure.**
+- [x] **Step 1: Start only the required infrastructure.**
 
 Run:
 
 ```bash
-docker compose -f docker-compose.dev.yaml -f neptive/docker-compose.dev.override.yaml up -d postiz-postgres postiz-redis temporal-postgresql temporal-elasticsearch temporal
+docker compose -f docker-compose.dev.yaml -f neptive/docker-compose.dev.override.yaml up -d postiz-postgres temporal-postgresql temporal-elasticsearch temporal
 ```
 
-Expected: containers start; existing host Postgres services on ports 5432/5433 remain untouched.
+Expected: containers start; existing host Postgres services on ports 5432/5433 remain untouched. Redis is provided by the existing service on `localhost:6379` on this machine, so `postiz-redis` is not started to avoid a port collision.
 
-- [ ] **Step 2: Check service health and ports.**
+- [x] **Step 2: Check service health and ports.**
 
 Run:
 
 ```bash
 docker compose -f docker-compose.dev.yaml -f neptive/docker-compose.dev.override.yaml ps
 docker exec postiz-postgres pg_isready -U postiz-local -d postiz-db-local
-docker exec postiz-redis redis-cli ping
+redis-cli -h localhost ping
 ```
 
 Expected: Postgres returns `accepting connections`, Redis returns `PONG`, and Temporal is running.
 
-- [ ] **Step 3: Generate Prisma and push the additive schema.**
+- [x] **Step 3: Generate Prisma and push the additive schema.**
 
 Run:
 
@@ -130,9 +130,9 @@ Expected: Prisma client generation succeeds and schema push completes without a 
 
 **Interfaces:**
 - Consumes: the prepared environment and infrastructure.
-- Produces: backend on port 3000, orchestrator on port 3002, and frontend on port 4200.
+- Produces: backend on port 3001 (3000 is occupied locally), orchestrator on port 3002, and frontend on port 4200.
 
-- [ ] **Step 1: Start backend, orchestrator, and frontend.**
+- [x] **Step 1: Start backend, orchestrator, and frontend.**
 
 Run each from the Neptive worktree in separate terminals, or as background processes with logs:
 
@@ -144,18 +144,18 @@ pnpm run dev:frontend
 
 Expected: all three processes remain running without fatal startup errors.
 
-- [ ] **Step 2: Verify basic HTTP reachability.**
+- [x] **Step 2: Verify basic HTTP reachability.**
 
 Run:
 
 ```bash
-curl -fsS http://localhost:3000/api/auth/can-register
+curl -fsS http://localhost:3001/auth/can-register
 curl -fsSI http://localhost:4200/auth/login
 ```
 
 Expected: backend returns JSON and frontend returns an HTTP success/redirect response.
 
-- [ ] **Step 3: Run Neptive isolation tests.**
+- [x] **Step 3: Run Neptive isolation tests.**
 
 Run:
 
@@ -175,7 +175,7 @@ Expected: the Neptive test suite passes; any failure is captured before creating
 - Consumes: agency authentication and `/neptive/agency/*` endpoints.
 - Produces: an agency admin account, the Casa Pandora customer, a client portal user `cliente@casapandora.local`, and a newly generated magic URL.
 
-- [ ] **Step 1: Create or authenticate the agency admin.**
+- [x] **Step 1: Create or authenticate the agency admin.**
 
 Use the first-user registration flow if the database is fresh; otherwise use the existing local admin account. For a fresh local database, register through `http://localhost:4200/auth/login` with:
 
@@ -188,12 +188,12 @@ Company: Neptive Agency
 
 Expected: login succeeds and the response provides the local auth session.
 
-- [ ] **Step 2: Create Casa Pandora through the agency endpoint.**
+- [x] **Step 2: Create Casa Pandora through the agency endpoint.**
 
 With the admin session, call:
 
 ```http
-POST /api/neptive/agency/clients
+POST /neptive/agency/clients
 Content-Type: application/json
 
 {"name":"Casa Pandora","website":"https://casapandora.local","notes":"Cliente demo locale"}
@@ -201,12 +201,12 @@ Content-Type: application/json
 
 Expected: response contains a Customer id and Casa Pandora is visible at `http://localhost:4200/agency`.
 
-- [ ] **Step 3: Invite the client through the agency endpoint.**
+- [x] **Step 3: Invite the client through the agency endpoint.**
 
 Call using the returned `customerId`:
 
 ```http
-POST /api/neptive/agency/clients/<customerId>/users
+POST /neptive/agency/clients/<customerId>/users
 Content-Type: application/json
 
 {"email":"cliente@casapandora.local","name":"Cliente Casa Pandora","role":"CLIENT_ADMIN"}
@@ -214,17 +214,17 @@ Content-Type: application/json
 
 Expected: response returns a local magic URL. If email delivery is not configured, the URL is still returned by the local API.
 
-- [ ] **Step 4: Consume and verify the magic URL.**
+- [x] **Step 4: Consume and verify the magic URL.**
 
 Open the returned URL, continue to the portal, and verify:
 
 ```http
-GET /api/neptive/portal/me
+GET /neptive/portal/me
 ```
 
 Expected: `email` is `cliente@casapandora.local` and `customerId` is Casa Pandora’s id. The same raw magic token cannot be consumed a second time.
 
-- [ ] **Step 5: Seed only non-destructive demo data if the guide needs visible PED content.**
+- [x] **Step 5: Seed only non-destructive demo data if the guide needs visible PED content.**
 
 Use the existing `neptive/scripts/vertical-slice.mjs` only if a visible validation fixture is needed, and do not run a reset. Keep fixture rows clearly labeled and scoped to Casa Pandora.
 
@@ -237,19 +237,19 @@ Use the existing `neptive/scripts/vertical-slice.mjs` only if a visible validati
 - Consumes: actual local URLs, generated admin/client credentials, customer id, magic link, and observed UI routes.
 - Produces: a standalone Italian guide for admin and client verification.
 
-- [ ] **Step 1: Document prerequisites and service URLs.**
+- [x] **Step 1: Document prerequisites and service URLs.**
 
-Include the worktree location, `localhost:4200`, backend `localhost:3000`, and the required Docker command.
+Include the worktree location, `localhost:4200`, backend `localhost:3001`, and the required Docker command.
 
-- [ ] **Step 2: Document the admin journey.**
+- [x] **Step 2: Document the admin journey.**
 
 Include login, `/agency`, creating/opening Casa Pandora, PED creation, content/approval routes, and inviting the client user.
 
-- [ ] **Step 3: Document the client journey.**
+- [x] **Step 3: Document the client journey.**
 
 Include the email identity, magic-link URL, `/portal`, PED, approvals, calendar/content, and logout. Mark the magic token as local/test-only.
 
-- [ ] **Step 4: Validate every guide URL and credential.**
+- [x] **Step 4: Validate every guide URL and credential.**
 
 Run:
 
@@ -260,7 +260,7 @@ curl -fsSI http://localhost:4200/portal/login
 
 Then complete the admin and client flows manually in the browser.
 
-- [ ] **Step 5: Review git state and commit only source/docs changes.**
+- [x] **Step 5: Review git state and commit only source/docs changes.**
 
 Run:
 
