@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# neptive-set-meta-keys: set FACEBOOK_APP_ID and FACEBOOK_APP_SECRET for the Neptive portal.
+# Installed on the server as /usr/local/sbin/neptive-set-meta-keys (root:root 750).
+# Source: neptive/scripts/server/neptive-set-meta-keys in the postiz-app fork.
+#
+# The values are typed/pasted with hidden input, never echoed, never passed as process
+# arguments, never logged. Output shows only variable names and value lengths.
+#
+#   ssh -t neptive-hostinger-01 /usr/local/sbin/neptive-set-meta-keys
+set -Eeuo pipefail
+umask 077
+
+ENV_FILE="${NEPTIVE_ENV_FILE:-/etc/neptive/postiz.env}"
+COMPOSE_DIR="${NEPTIVE_COMPOSE_DIR:-/opt/postiz-neptive}"
+BACKUP_DIR="${NEPTIVE_BACKUP_DIR:-/root/backups}"
+NO_DOCKER="${NEPTIVE_TEST_NO_DOCKER:-0}"   # tests only
+KEYS=(FACEBOOK_APP_ID FACEBOOK_APP_SECRET)
+
+die() { echo "ERRORE: $*" >&2; exit 1; }
+[[ -t 0 ]] || die "serve un terminale interattivo: usa  ssh -t neptive-hostinger-01 $0"
+[[ -f "$ENV_FILE" ]] || die "$ENV_FILE non esiste"
+[[ -w "$ENV_FILE" ]] || die "$ENV_FILE non è scrivibile (serve root)"
+
+ask() { # ask VAR "prompt"  -> hidden input, trimmed, stored in VAR
+  local __v
+  IFS= read -rs -p "$2: " __v; echo
+  __v="${__v//$'\r'/}"; __v="${__v#"${__v%%[![:space:]]*}"}"; __v="${__v%"${__v##*[![:space:]]}"}"
+  printf -v "$1" '%s' "$__v"
+}
+confirm() { local a; read -r -p "$1 [s/N] " a; [[ "$a" == "s" || "$a" == "S" ]]; }
+
+echo "Inserisci i due valori dell'app Meta. Quello che incolli NON viene mostrato."
+ask APP_ID "FACEBOOK_APP_ID (App ID)"
+ask APP_SECRET "FACEBOOK_APP_SECRET (App Secret)"
+
+[[ -n "$APP_ID" && -n "$APP_SECRET" ]] || die "un valore è vuoto: nessuna modifica fatta"
+[[ "$APP_ID$APP_SECRET" != *$'\n'* && "$APP_ID$APP_SECRET" != *[[:space:]]* && "$APP_ID$APP_SECRET" != *[\"\'\#\$\`\\]* ]] \
+  || die "un valore contiene spazi, virgolette o caratteri speciali: nessuna modifica fatta"
+if [[ ! "$APP_ID" =~ ^[0-9]{5,25}$ ]]; then
+  echo "Attenzione: l'App ID di solito è solo numerico (${#APP_ID} caratteri inseriti)."
+  confirm "Lo salvo comunque?" || die "annullato: nessuna modifica fatta"
+fi
+if [[ ! "$APP_SECRET" =~ ^[0-9a-f]{32}$ ]]; then
+  echo "Attenzione: l'App Secret di solito è di 32 caratteri esadecimali (${#APP_SECRET} inseriti)."
+  confirm "Lo salvo comunque?" || die "annullato: nessuna modifica fatta"
+fi
+[[ "$APP_ID" != "$APP_SECRET" ]] || die "i due valori sono identici: nessuna modifica fatta"
+
+echo "FACEBOOK_APP_ID: ${#APP_ID} caratteri · FACEBOOK_APP_SECRET: ${#APP_SECRET} caratteri"
+confirm "Scrivo in $ENV_FILE e riavvio il portale (circa 1 minuto di fermo)?" || die "annullato: nessuna modifica fatta"
+
+mkdir -p "$BACKUP_DIR"
+BACKUP="$BACKUP_DIR/postiz.env-before-meta-keys-$(date -u +%Y%m%dT%H%M%SZ)"
+cp -p "$ENV_FILE" "$BACKUP"; chmod 600 "$BACKUP"
+echo "backup: $BACKUP"
+
+TMP="$(mktemp "${ENV_FILE}.XXXXXX")"
+trap 'rm -f "$TMP"' EXIT
+grep -Ev '^[[:space:]]*(export[[:space:]]+)?(FACEBOOK_APP_ID|FACEBOOK_APP_SECRET)=' "$ENV_FILE" > "$TMP" || true
+[[ -z "$(tail -c1 "$TMP")" ]] || echo >> "$TMP"
+printf 'FACEBOOK_APP_ID=%s\nFACEBOOK_APP_SECRET=%s\n' "$APP_ID" "$APP_SECRET" >> "$TMP"
+chmod --reference="$ENV_FILE" "$TMP"; chown --reference="$ENV_FILE" "$TMP"
+mv -f "$TMP" "$ENV_FILE"; trap - EXIT
+unset APP_ID APP_SECRET
+for k in "${KEYS[@]}"; do
+  [[ "$(grep -c "^$k=" "$ENV_FILE")" == 1 ]] || die "$k non risulta scritta una sola volta: ripristina con  cp -p $BACKUP $ENV_FILE"
+done
+echo "scritte in $ENV_FILE: ${KEYS[*]} (una riga ciascuna)"
+
+if [[ "$NO_DOCKER" == 1 ]]; then echo "(test: docker saltato)"; exit 0; fi
+
+recreate() { (cd "$COMPOSE_DIR" && docker compose up -d --no-build --no-deps --force-recreate postiz) >/dev/null 2>&1; }
+wait_backend() { local i; for i in $(seq 1 60); do docker logs postiz 2>&1 | grep -q 'Backend is running' && return 0; sleep 3; done; return 1; }
+
+echo "riavvio del container postiz…"
+recreate || die "docker compose up fallito. Ripristino: cp -p $BACKUP $ENV_FILE && cd $COMPOSE_DIR && docker compose up -d --no-build --no-deps --force-recreate postiz"
+if wait_backend; then
+  for k in "${KEYS[@]}"; do
+    docker exec -e K="$k" postiz sh -c 'eval "v=\${$K:-}"; [ -n "$v" ] && echo "nel container: $K presente (${#v} caratteri)" || { echo "nel container: $K MANCANTE"; exit 1; }'
+  done
+  docker inspect -f 'container: {{.State.Status}}, riavvii {{.RestartCount}}' postiz
+  echo "FATTO. Il portale è ripartito con le chiavi Meta."
+else
+  echo "Il backend non è ripartito entro 3 minuti: ripristino la configurazione precedente."
+  cp -p "$BACKUP" "$ENV_FILE"
+  recreate || true
+  if wait_backend; then die "configurazione precedente ripristinata, portale di nuovo su. Le chiavi NON sono attive."
+  else die "anche dopo il ripristino il backend non parte: controlla  docker logs postiz --tail 80"; fi
+fi
