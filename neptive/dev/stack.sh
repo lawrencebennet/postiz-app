@@ -32,7 +32,10 @@ case "$cmd" in
     # Next 16.4.2 prints a one-off "security upgrade recommendation" and exits on some starts; the retry is its documented behaviour.
     for attempt in 1 2 3; do
       nohup setsid pnpm run dev-backend > "$DATA/dev.log" 2>&1 < /dev/null & echo $! > "$DATA/dev.pid"
-      for _ in $(seq 1 60); do sleep 2; ss -ltn | grep -q ':4200\b' && { echo "up: http://localhost:4200 (API :3000), log .data/dev.log"; exit 0; }; grep -q SecurityFatalError "$DATA/dev.log" && break; done
+      for _ in $(seq 1 90); do sleep 2
+        grep -q SecurityFatalError "$DATA/dev.log" && break
+        curl -fs -o /dev/null localhost:4200/auth/login && curl -s -o /dev/null localhost:3000/ && { echo "up: http://localhost:4200 (API :3000), log .data/dev.log"; exit 0; }
+      done
       echo "attempt $attempt failed (see .data/dev.log), retrying"; "$0" app-stop
     done; exit 1;;
   app-stop)
