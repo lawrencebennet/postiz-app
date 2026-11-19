@@ -21,3 +21,9 @@ dist
 .git
 .github
 reports
+# Neptive: never bake local secrets or customer data into an image (COPY . /app in Dockerfile.dev)
+.env
+.env.*
+!.env.example
+neptive/dev/.data
+reports
