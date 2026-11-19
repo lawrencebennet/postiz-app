@@ -2,7 +2,8 @@
 # Deploy the Neptive Postiz image to production (https://portal.neptive.com). Read neptive/DEPLOY.md first.
 #
 #   neptive/scripts/deploy-prod.sh --dry-run                      print every command, run nothing
-#   neptive/scripts/deploy-prod.sh --i-have-approval              run all steps (touches the server)
+#   neptive/scripts/deploy-prod.sh --i-have-approval --stop-before-schema   run all steps (touches the server); RECOMMENDED order:
+#                                                                 the old container is stopped before the schema step
 #   neptive/scripts/deploy-prod.sh --i-have-approval --from schema --date 20261120-0830   resume (same --date!)
 #   neptive/scripts/deploy-prod.sh --i-have-approval --only preflight                      one step
 #   neptive/scripts/deploy-prod.sh --i-have-approval --rollback rollback-20261120-0830     back to the previous image
@@ -24,7 +25,7 @@ DB_URL='postgresql://postiz-app@postiz-postgres:5432/postiz-db'   # from compose
 SCHEMA=./libraries/nestjs-libraries/src/database/prisma/schema.prisma
 STEPS=(build preflight backup tag-rollback transfer schema switch health)
 
-DRY=0; APPROVED=0; FROM=""; ONLY=""; ROLLBACK_TO=""; REBUILD=0
+STOP_FIRST=0; DRY=0; APPROVED=0; FROM=""; ONLY=""; ROLLBACK_TO=""; REBUILD=0
 DATE="$(date +%Y%m%d-%H%M)"; SHA=""
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STATE_DIR="$ROOT/neptive/dev/.data"
@@ -40,6 +41,7 @@ while [ $# -gt 0 ]; do
     --sha) SHA="$2"; shift;;
     --rollback) ROLLBACK_TO="$2"; shift;;
     --rebuild) REBUILD=1;;
+    --stop-before-schema) STOP_FIRST=1;;
     -h|--help) usage 0;;
     *) echo "unknown argument: $1" >&2; usage;;
   esac; shift
@@ -58,7 +60,8 @@ mkdir -p "$STATE_DIR"
 CURRENT="start"
 say()  { printf '\n== %s\n' "$*"; }
 die()  { printf 'STOP: %s\n' "$*" >&2; exit 1; }
-trap 'printf "\nFAILED during step \"%s\" (line %s). Nothing after it was run. See neptive/DEPLOY.md, section Rollback, before retrying.\n" "$CURRENT" "$LINENO" >&2' ERR
+STOPPED=0
+trap 'printf "\nFAILED during step \"%s\" (line %s). Nothing after it was run. See neptive/DEPLOY.md, section Rollback, before retrying.\n" "$CURRENT" "$LINENO" >&2; [ "$STOPPED" = 1 ] && printf "DOWNTIME HAS STARTED (postiz container stopped). Follow the Rollback section now: --rollback rollback-%s\n" "$DATE" >&2' ERR
 
 # local <cmd>: run on this workstation.   R <cmd>: run on the server over ssh.   Rq: same, but capture stdout.
 L()  { printf '+ local: %s\n' "$1"; [ "$DRY" = 1 ] || bash -c "set -Eeuo pipefail; $1"; }
@@ -107,6 +110,9 @@ step_preflight() {
   local id; id="$(Rq "docker inspect postiz --format '{{.Image}}'")"
   echo "image to roll back to: $id (currently tagged $LIVE_TAG)"
   save ROLLBACK_ID "$id"
+  if [ "$DRY" = 0 ]; then
+    Rq "$PSQL -c \"select 'sessions_unexpired|'||count(*) from neptive_portal_sessions where \\\"expiresAt\\\" > now()\" -c \"select 'queue|'||state||'|'||count(*)||'|'||coalesce(min(\\\"publishDate\\\")::text,'') from \\\"Post\\\" where state='QUEUE' group by state\" -c \"select 'poststates|'||state||'|'||count(*) from \\\"Post\\\" group by state order by 1\"" > "$STATE_DIR/deploy-extra-before-$DATE.txt"; cat "$STATE_DIR/deploy-extra-before-$DATE.txt"
+  fi
   if [ "$DRY" = 0 ]; then Rq "$PSQL -c \"$COUNTS_SQL\"" > "$STATE_DIR/deploy-counts-before-$DATE.txt"; echo "row counts of $(wc -l < "$STATE_DIR/deploy-counts-before-$DATE.txt") tables saved for the post-schema comparison"; else Rq "$PSQL -c \"$COUNTS_SQL\"" >/dev/null; fi
 }
 
@@ -134,6 +140,20 @@ step_transfer() {
 step_schema() {
   say "6/8 one-time schema step (prisma db push --accept-data-loss) from a one-off container of the NEW image"
   local D=/root/backups/schema-diff-$DATE.sql
+  if [ "$STOP_FIRST" = 1 ]; then
+    echo "DOWNTIME STARTS NOW: stopping the old container so the old code never runs against the new schema"
+    save DOWNTIME_START "$(date '+%F %T %Z')"; STOPPED=1
+    R "cd $COMPOSE_DIR && docker compose stop postiz && docker inspect -f 'postiz: {{.State.Status}}' postiz"
+    if [ "$DRY" = 0 ]; then
+      # data may have changed between preflight and the stop (clients are using the portal): the comparison that
+      # matters is stopped-before vs after the schema step, so take the baseline now (preflight copy is kept)
+      cp "$STATE_DIR/deploy-counts-before-$DATE.txt" "$STATE_DIR/deploy-counts-preflight-$DATE.txt"
+      Rq "$PSQL -c \"$COUNTS_SQL\"" > "$STATE_DIR/deploy-counts-before-$DATE.txt"
+      diff <(cat "$STATE_DIR/deploy-counts-preflight-$DATE.txt") "$STATE_DIR/deploy-counts-before-$DATE.txt" > "$STATE_DIR/deploy-counts-drift-$DATE.txt" || echo "tables whose count changed between preflight and the stop (live use, informational): $(grep -c '^>' "$STATE_DIR/deploy-counts-drift-$DATE.txt")"
+    else
+      echo "(dry-run) would re-snapshot every table's row count now (container stopped) as the baseline for the post-schema comparison"
+    fi
+  fi
   R "$(one_off "pnpm dlx prisma@6.5.0 migrate diff --from-url \\\"\\\$DATABASE_URL\\\" --to-schema-datamodel $SCHEMA --script") > $D; wc -l $D"
   R "if grep -Eqi 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; then echo 'the diff drops data:'; grep -Ei 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; exit 1; fi; echo \"statements: \$(grep -c ';' $D); DROP INDEX/CONSTRAINT only:\"; grep -E '^(DROP|ALTER TABLE .* DROP)' $D"
   R "$(one_off "pnpm dlx prisma@6.5.0 db push --accept-data-loss --schema $SCHEMA") | tail -4"
@@ -157,7 +177,7 @@ PY
 
 step_switch() {
   say "7/8 switch the compose service to the new image (retag + up --no-build; compose.yml is not edited)"
-  echo "DOWNTIME STARTS: the postiz container is recreated (nginx + backend + frontend + orchestrator restart)"
+  if [ "$STOP_FIRST" = 1 ]; then echo "(the container is already stopped; downtime started before the schema step)"; else echo "DOWNTIME STARTS: the postiz container is recreated (nginx + backend + frontend + orchestrator restart)"; save DOWNTIME_START "$(date '+%F %T %Z')"; STOPPED=1; fi
   R "docker tag $IMG $LIVE_TAG"
   R "cd $COMPOSE_DIR && docker compose up -d --no-build --no-deps postiz"
 }
@@ -176,7 +196,7 @@ health_checks() {
   done
   L "code=\$(curl -s -o /dev/null -w '%{http_code}' $PUBLIC_URL/api/neptive/portal/me); echo \"$PUBLIC_URL/api/neptive/portal/me (no session) -> \$code\"; test \"\$code\" = 401"
 }
-step_health() { say "8/8 health checks"; health_checks "$IMG"; echo; [ "$DRY" = 1 ] || echo "Deploy finished. Next: neptive/DEPLOY.md, 'After the deploy' (log in as admin, open the Aurora variants slot, watch docker logs postiz for a few minutes)."; }
+step_health() { say "8/8 health checks"; health_checks "$IMG"; STOPPED=0; save DOWNTIME_END "$(date '+%F %T %Z')"; load; echo "downtime: ${DOWNTIME_START:-?} -> ${DOWNTIME_END:-?}"; echo; [ "$DRY" = 1 ] || echo "Deploy finished. Next: neptive/DEPLOY.md, 'After the deploy' (log in as admin, open the Aurora variants slot, watch docker logs postiz for a few minutes)."; }
 
 rollback() {
   local tag="$1"

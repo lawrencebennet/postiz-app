@@ -43,9 +43,22 @@ ssh neptive-hostinger-01 'docker system df; docker builder prune -af; df -h /'
 This frees about 10 GB and does not touch images, containers or volumes. It is a write on the server: do it
 deliberately, before the deploy. The preflight step stops below 14 GB free.
 
+## Recommended order: `--stop-before-schema`
+
+The old code must never run against the new schema, so the recommended run is
+`deploy-prod.sh --i-have-approval --stop-before-schema --sha <sha>`:
+
+preflight -> backups -> rollback tag -> transfer + load (site still up) -> **`docker compose stop postiz` (downtime
+starts)** -> baseline row counts (container stopped) -> one-time schema step + row-count comparison -> retag +
+`up -d --no-build --no-deps postiz` -> health checks (downtime ends). Downtime is about one to two minutes longer than
+without the flag because the schema step (diff, `prisma db push`, both via `pnpm dlx` downloads) sits inside it. Without
+the flag the schema step runs while the old container still serves (step 6 and 7 below, as originally rehearsed).
+
+If anything fails after the stop, the script says so; follow "Rollback" (the old image does not need the old schema).
+
 ## Order of the runbook (the script does exactly this)
 
-Deploy the rehearsed image: `neptive/scripts/deploy-prod.sh --dry-run --sha d54aa4c8` first and read it, then the same with `--i-have-approval` instead of `--dry-run` (without `--sha` the script builds the current HEAD, which is a different image: later commits only touched docs/dev tooling, but then it is not the one rehearsed; `--sha` reuses the local image if it exists). It stops at the first
+Deploy the rehearsed image: `neptive/scripts/deploy-prod.sh --dry-run --sha d54aa4c8` first and read it, then the same with `--i-have-approval` instead of `--dry-run`, **always with `--stop-before-schema`** (the recommended and default-intended order, below) (without `--sha` the script builds the current HEAD, which is a different image: later commits only touched docs/dev tooling, but then it is not the one rehearsed; `--sha` reuses the local image if it exists). It stops at the first
 failing command; resume with `--from <step> --date <same date>` (the date names the backups and the rollback tag).
 
 1. **build** (workstation): tree clean, commit pushed to `origin/neptive-next`, `git archive` into a temp dir,
