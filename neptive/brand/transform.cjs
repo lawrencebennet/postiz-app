@@ -30,8 +30,19 @@ const QUICK = new RegExp(
 const CUTS = (brand.cuts || []).map((c) => ({ ...c, file: c.file.replace(/\\/g, '/') }));
 const cutsFor = (file) => (file ? CUTS.filter((c) => file.replace(/\\/g, '/').endsWith(c.file)) : []);
 
+// Neptive translation keys (neptive/brand/locales/<lang>.json) merged into the upstream locale at build time,
+// so Neptive strings shown inside upstream screens (sidebar entry "Agenzia") need no edit of upstream locales.
+const LOCALE_RE = /locales[\\/]([a-z]{2}(?:-[A-Za-z]+)?)[\\/]translation\.json$/;
+function withOverlay(source, file) {
+  const lang = file && file.match(LOCALE_RE)?.[1];
+  const overlay = lang && path.join(__dirname, 'locales', `${lang}.json`);
+  if (!overlay || !fs.existsSync(overlay)) return source;
+  return JSON.stringify({ ...JSON.parse(source), ...JSON.parse(fs.readFileSync(overlay, 'utf8')) }, null, 2);
+}
+
 function transform(source, file) {
   for (const cut of cutsFor(file)) source = source.split(cut.from).join(cut.to);
+  source = withOverlay(source, file);
   if (!QUICK.test(source)) return source;
   let out = source;
   for (const [re, to] of WORDS) out = out.replace(re, to);

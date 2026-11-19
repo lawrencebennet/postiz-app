@@ -10,6 +10,8 @@ email sender).
 | where | what it does | upstream file touched |
 |---|---|---|
 | Next build: `neptive/brand/next/with-neptive-brand.mjs` | Turbopack (and webpack) loader running `neptive/brand/transform.cjs` on every upstream source and locale file that contains a brand word: "Postiz"/"Gitroom" (and the bn/he transliterations) become "Neptive" in strings, JSX, page titles, translations (all 16 locales, at build time, files untouched). Identifiers are never touched (`x-postiz-org`, `POSTIZ_*`, `@postiz/*`, `postiz://`, `PostizAdapter`) because the match is on whole capitalised words. | `apps/frontend/next.config.js` (2 lines) |
+| same loader: `cuts` in brand.json | exact snippets removed from one upstream file: the upstream CLI cards in Settings > Agents and onboarding (`npm install -g postiz`). brand-check fails if a snippet stops matching | none |
+| same loader: `neptive/brand/locales/<lang>.json` | Neptive translation keys merged into the upstream locale when it is bundled (sidebar entry `agency` → "Agenzia") | none |
 | same wrapper: `resolveAlias` | swaps 4 upstream modules for Neptive ones: sidebar logo, logo-text, the font module (`plus.jakarta.sans.font` → `components/neptive/brand/theme.ts`, which also loads `brand.css`), the login form | none |
 | same wrapper: `rewrites.beforeFiles` | `/postiz.svg`, `/logo.svg`, `/favicon.ico`, `/favicon.png`, `/postiz-fav.png`, auth background images … are served from `public/neptive/brand/` | none |
 | same wrapper: `redirects` | with `DISABLE_REGISTRATION=true`, `/auth` (where signed-out visitors land) goes to `/auth/login` | none |

@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
@@ -239,7 +239,23 @@ const SectionTitle = ({ children, aside }: { children: ReactNode; aside?: ReactN
 export const PortalOverview = () => {
   const { data } = useNeptivePortal('dashboard');
   const { data: me } = useNeptivePortalMe();
-  const waiting = data?.awaitingApproval || [];
+  // one row per content: the variants of a slot (A, B, C…) are grouped, the client decides them together
+  const waiting = useMemo(() => {
+    const rows: Array<{ id: string; title: string; status: string; labels: string[] }> = [];
+    const bySlot = new Map<string, (typeof rows)[number]>();
+    for (const item of (data?.awaitingApproval || []) as any[]) {
+      const slot = item.variant?.itemTitle;
+      const existing = slot ? bySlot.get(slot) : undefined;
+      if (existing) {
+        existing.labels.push(item.variant.label);
+        continue;
+      }
+      const row = { id: item.id, title: slot || item.title || 'Contenuto', status: item.status, labels: item.variant ? [item.variant.label] : [] };
+      rows.push(row);
+      if (slot) bySlot.set(slot, row);
+    }
+    return rows;
+  }, [data?.awaitingApproval]);
   const name = firstName(me?.name);
   return (
     <div className="flex flex-col gap-[16px] md:gap-[20px]">
@@ -257,7 +273,12 @@ export const PortalOverview = () => {
             <ul className="flex flex-col divide-y divide-[var(--nx-line)]">
               {waiting.slice(0, 5).map((item: any) => (
                 <li key={item.id} className="py-[10px] first:pt-0 flex items-center justify-between gap-[12px]">
-                  <span className="text-[15px] leading-[1.35] min-w-0 break-words">{item.title || 'Contenuto'}</span>
+                  <span className="min-w-0 flex flex-col gap-[4px]">
+                    <span className="text-[15px] leading-[1.35] break-words">{item.title}</span>
+                    {item.labels.length > 1 && (
+                      <span className="nx-label">Scegli tra {item.labels.length} varianti · {item.labels.join(' ')}</span>
+                    )}
+                  </span>
                   <NeptiveBadge tone={statusTone(item.status)}>{statusLabel(item.status)}</NeptiveBadge>
                 </li>
               ))}

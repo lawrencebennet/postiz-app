@@ -47,7 +47,7 @@ async function newPage(w) {
   const ctx = await browser.newContext({ viewport: { width: w, height: h }, deviceScaleFactor: mobile ? 2 : 1, isMobile: mobile, hasTouch: mobile });
   await ctx.addCookies([{ name: 'i18next', value: lang, url: BASE }, ...(light ? [{ name: 'mode', value: 'light', url: BASE }] : [])]);
   const page = await ctx.newPage();
-  page.on('pageerror', (e) => log.push(`PAGEERROR ${e.message.slice(0, 160)}`));
+  page.on('pageerror', (e) => log.push(`PAGEERROR ${new URL(page.url()).pathname} ${e.message.slice(0, 160)}`));
   return { ctx, page };
 }
 async function shot(page, w, name, opts = {}) {
