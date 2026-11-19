@@ -65,6 +65,19 @@ Uses playwright from the mise npm-playwright install and system Chromium. It log
 `/agency` and the Casa Pandora agency pages, then the portal via the magic link: `/portal`, `/portal/ped`, one post
 detail, `/portal/approvals`.
 
+## Post variants demo (A, B, C… per PED slot)
+
+```
+neptive/dev/seed-variants.sh          # Aurora Gallorini: one slot "Reel — New Life: quale montaggio?" with variants A-D,
+                                      # plus an unattached post E; prints an Aurora magic link. Re-runnable, local only.
+node neptive/dev/qa-variants.mjs      # re-seeds, drives agency + client at 1440x900 and 390x844,
+                                      # screenshots + log in .data/shots/variants/, API refusal checks
+neptive/dev/gate-check.sh <postId>…   # runs the real post workflow v1.1.2 on the local Temporal with fake
+                                      # activities and the real publish gate; prints whether the provider was called
+```
+
+The existing single-post items are not touched by the seed. Loading variants by SQL: `neptive/docs/variants-loading.md`.
+
 ## Known quirks
 
 - Next 16.4.2 prints a "security upgrade recommendation" and exits on some starts; `stack.sh app` retries

@@ -93,6 +93,9 @@ Client people   = NeptiveClientUser + magic link
 PED            = NeptiveEditorialPlan (clients see it after Send to client)
 Posts          = Postiz only
 Approval       = NeptiveContentApproval keyed by Post.group
+Variants       = NeptivePlanItemVariant rows (A, B, C…) per PED item, one Post.group each; the client's approval
+                 of one sets item.confirmedVariantId. Unconfirmed variants are refused at publish time by the
+                 worker interceptor in neptive/publish-gate (see neptive/docs/variants-loading.md)
 Publish        = Postiz DRAFT|QUEUE|PUBLISHED|ERROR + Temporal
 ```
 

@@ -50,10 +50,9 @@ if (magic) {
   await shot(page, '12-portal-home');
   await page.goto(BASE + '/portal/ped', { waitUntil: 'networkidle' });
   await shot(page, '13-portal-ped');
-  // open one post detail: click first calendar card that has a title
-  const card = page.getByText(/Mercatini/).first();
-  await card.scrollIntoViewIfNeeded();
-  await card.click();
+  // one post in the date-ordered feed (preview, caption, comments, actions are inline; no modal)
+  const card = page.locator('article', { has: page.getByRole('heading', { name: /Mercatini/ }) }).first();
+  await card.evaluate((el) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - 8));
   await shot(page, '14-portal-ped-post-detail');
   await page.goto(BASE + '/portal/approvals', { waitUntil: 'networkidle' });
   await shot(page, '15-portal-approvals');
