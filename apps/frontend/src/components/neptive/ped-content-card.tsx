@@ -118,7 +118,7 @@ export const PedContentCard: FC<{
           </NeptiveBadge>
         </div>
         <div className="text-[11px] text-newTableText line-clamp-2">
-          {content?.caption || (item.linkStatus === 'MISSING' ? 'Collegamento Postiz non disponibile' : 'Collega un contenuto Postiz')}
+          {content?.caption || (item.linkStatus === 'MISSING' ? 'Collegamento Neptive non disponibile' : 'Collega un contenuto Neptive')}
         </div>
         <div className="text-[10px] text-newTableText">Pubblicazione: {publishingState}</div>
       </div>

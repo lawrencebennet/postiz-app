@@ -72,7 +72,7 @@ export const AgencyClientShell = ({
           href="/launches"
           className="text-[13px] px-[12px] h-[40px] flex items-center rounded-[8px] bg-newBtnSimple"
         >
-          Open Postiz calendar
+          Open Neptive calendar
         </Link>
       </div>
       <div className="flex flex-wrap gap-[6px]">
@@ -144,7 +144,7 @@ const OverviewPanel = ({ customerId }: { customerId: string }) => {
           <NeptiveEmpty>No report yet</NeptiveEmpty>
         )}
       </NeptiveCard>
-      <NeptiveCard title="Upcoming in Postiz">
+      <NeptiveCard title="Upcoming in Neptive">
         {upcoming.slice(0, 6).map((item: any) => (
           <div key={item.id} className="text-[13px] py-[4px] border-b border-newTableBorder last:border-0">
             <div className="line-clamp-2">{postPreviewText(item.content) || 'Scheduled post'}</div>
@@ -214,7 +214,7 @@ const PreviewIdentityPanel = ({ customerId }: { customerId: string }) => {
 
   return (
     <NeptiveCard title="Identità delle anteprime">
-      <div className="mb-[12px] text-[12px] text-newTableText">Configura il nome e l’immagine che il cliente vedrà nei mockup Instagram e Facebook. Non modifica gli account Postiz né le credenziali social.</div>
+      <div className="mb-[12px] text-[12px] text-newTableText">Configura il nome e l’immagine che il cliente vedrà nei mockup Instagram e Facebook. Non modifica gli account Neptive né le credenziali social.</div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px]">
         <NeptiveField label="Nome profilo Instagram"><input className={fieldClass} value={values.instagramName} onChange={(e) => setValues((current) => ({ ...current, instagramName: e.target.value }))} placeholder="Casa Pandora" /></NeptiveField>
         <NeptiveField label="Immagine profilo Instagram (URL)"><input className={fieldClass} value={values.instagramImage} onChange={(e) => setValues((current) => ({ ...current, instagramImage: e.target.value }))} placeholder="https://…" /></NeptiveField>
@@ -359,22 +359,22 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-[8px]">
                 {items.map((item) => <PedContentCard key={item.id} item={item} onOpen={setSelectedItem} />)}
               </div>
-              {!items.length && <NeptiveEmpty>Aggiungi il primo contenuto Postiz a questo PED.</NeptiveEmpty>}
+              {!items.length && <NeptiveEmpty>Aggiungi il primo contenuto Neptive a questo PED.</NeptiveEmpty>}
             </NeptiveCard>
-            <NeptiveCard title="Aggiungi contenuto dal calendario Postiz">
+            <NeptiveCard title="Aggiungi contenuto dal calendario Neptive">
               <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-[8px] items-end">
                 <NeptiveField label="Titolo editoriale">
                   <input className={fieldClass} placeholder="Es. Camera Deluxe" value={itemDrafts[ped.id] || ''} onChange={(e) => setItemDrafts((current) => ({ ...current, [ped.id]: e.target.value }))} />
                 </NeptiveField>
-                <NeptiveField label="Contenuto Postiz">
+                <NeptiveField label="Contenuto Neptive">
                   <select className={fieldClass} value={itemGroups[ped.id] || ''} onChange={(e) => setItemGroups((current) => ({ ...current, [ped.id]: e.target.value }))}>
-                    <option value="">Seleziona un draft Postiz</option>
+                    <option value="">Seleziona un draft Neptive</option>
                     {postGroups.map((post: any) => <option key={post.group} value={post.group}>{postPreviewText(post.content) || 'Contenuto senza titolo'} · {post.state}</option>)}
                   </select>
                 </NeptiveField>
                 <Button onClick={() => addItem(ped.id)}>+ Aggiungi</Button>
               </div>
-              <div className="text-[12px] text-newTableText mt-[8px]">Caption, media, ordine, canale, data e stato restano gestiti dal composer/calendario Postiz.</div>
+              <div className="text-[12px] text-newTableText mt-[8px]">Caption, media, ordine, canale, data e stato restano gestiti dal composer/calendario Neptive.</div>
             </NeptiveCard>
           </div>
         );
@@ -406,9 +406,9 @@ const ContentPanel = ({ customerId }: { customerId: string }) => {
   const { data } = useNeptiveAgencyList(customerId, 'posts?state=all');
   const posts = data?.posts || [];
   return (
-    <NeptiveCard title="Client posts (from Postiz)">
+    <NeptiveCard title="Client posts (from Neptive)">
       <div className="text-[12px] text-newTableText mb-[8px]">
-        Publishing state is owned by Postiz. Use Approvals for client sign-off.
+        Publishing state is owned by Neptive. Use Approvals for client sign-off.
       </div>
       {posts.map((post: any) => (
         <div key={post.id} className="flex justify-between py-[8px] border-b border-newTableBorder gap-[12px]">
@@ -498,7 +498,7 @@ const ApprovalsPanel = ({ customerId }: { customerId: string }) => {
             value={postGroup}
             onChange={(e) => setPostGroup(e.target.value)}
           >
-            <option value="">Select Postiz post</option>
+            <option value="">Select Neptive post</option>
             {groups.map((post: any) => (
               <option key={post.group} value={post.group}>
                 {(postPreviewText(post.content) || 'Untitled').slice(0, 80)} · {post.state}
@@ -748,7 +748,7 @@ const MaterialsPanel = ({ customerId }: { customerId: string }) => {
               <option key={k}>{k}</option>
             ))}
           </select>
-          <input className={fieldClass} placeholder="File URL or Postiz media path" value={filePath} onChange={(e) => setFilePath(e.target.value)} />
+          <input className={fieldClass} placeholder="File URL or Neptive media path" value={filePath} onChange={(e) => setFilePath(e.target.value)} />
           <select className={fieldClass} value={visibility} onChange={(e) => setVisibility(e.target.value)}>
             <option value="CLIENT_VISIBLE">Client visible</option>
             <option value="INTERNAL">Internal only</option>
@@ -763,7 +763,7 @@ const MaterialsPanel = ({ customerId }: { customerId: string }) => {
 const AnalyticsPanel = ({ customerId }: { customerId: string }) => {
   const { data } = useNeptiveAgencyList(customerId, 'analytics?date=30');
   return (
-    <NeptiveCard title="Channel analytics (Postiz collectors)">
+    <NeptiveCard title="Channel analytics (Neptive collectors)">
       {(data || []).map((row: any) => (
         <div key={row.integrationId} className="py-[8px] border-b border-newTableBorder">
           <div className="font-[600]">{row.name} · {row.provider}</div>

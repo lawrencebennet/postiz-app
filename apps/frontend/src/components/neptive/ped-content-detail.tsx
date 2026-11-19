@@ -33,7 +33,7 @@ export const PedContentDetail: FC<{
           <div className="flex items-start justify-between gap-[16px] mb-[14px]">
             <div>
               <div className="text-[11px] text-newTableText uppercase tracking-[0.08em]">Anteprima contenuto</div>
-              <h2 className="text-[20px] font-[700]">{item.title || content?.title || 'Contenuto Postiz'}</h2>
+              <h2 className="text-[20px] font-[700]">{item.title || content?.title || 'Contenuto Neptive'}</h2>
               <div className="text-[12px] text-newTableText mt-[4px]">
                 {content?.channel || 'Canale da definire'} · {contentTypeLabel(content?.contentType)} · {formatWhen(content?.scheduledAt)}
               </div>
@@ -46,7 +46,7 @@ export const PedContentDetail: FC<{
               {content ? (
                 <PlatformPreviewSwitcher content={content as any} identity={previewIdentity} />
               ) : (
-                <div className="rounded-[10px] bg-black min-h-[300px] flex items-center justify-center text-[13px] text-white/70">Nessun contenuto Postiz collegato</div>
+                <div className="rounded-[10px] bg-black min-h-[300px] flex items-center justify-center text-[13px] text-white/70">Nessun contenuto Neptive collegato</div>
               )}
             </div>
 

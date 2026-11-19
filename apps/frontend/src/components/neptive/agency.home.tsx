@@ -53,7 +53,7 @@ export const AgencyHome = () => {
         <div className="text-[24px] font-[700]">Agency</div>
         <div className="text-[13px] text-newTableText">
           Clients, editorial plans, approvals, and work performed. Composer and
-          calendar stay in Postiz.
+          calendar stay in Neptive.
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.8fr] gap-[16px]">

@@ -190,7 +190,7 @@ export const PlatformPreviewSwitcher: FC<{
   return (
     <div className="flex flex-col gap-[12px]">
       <div className="flex flex-wrap items-center justify-between gap-[8px]">
-        <div><div className="text-[11px] uppercase tracking-[0.1em] text-newTableText">Anteprima piattaforma</div><div className="text-[13px] text-newTableText">Il media e il testo arrivano dal contenuto Postiz collegato.</div></div>
+        <div><div className="text-[11px] uppercase tracking-[0.1em] text-newTableText">Anteprima piattaforma</div><div className="text-[13px] text-newTableText">Il media e il testo arrivano dal contenuto Neptive collegato.</div></div>
         <div className="flex rounded-[8px] bg-newBgColorInner p-[3px]" role="tablist" aria-label="Scegli anteprima">
           {(['instagram', 'facebook'] as PreviewPlatform[]).map((item) => <button key={item} type="button" role="tab" aria-selected={platform === item} onClick={() => { setPlatform(item); setFacebookDetail(false); }} className={clsx('rounded-[6px] px-[10px] py-[7px] text-[11px] font-[700]', platform === item ? 'bg-boxFocused text-textItemFocused' : 'text-newTableText')}>{item === 'instagram' ? 'Instagram preview' : 'Facebook preview'}</button>)}
         </div>
