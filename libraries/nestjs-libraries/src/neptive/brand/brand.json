@@ -39,5 +39,19 @@
   },
   "email": {
     "fromName": "Neptive Social Portal"
-  }
+  },
+  "cuts": [
+    {
+      "file": "apps/frontend/src/components/public-api/public.component.tsx",
+      "from": "<CliSection apiKey={user.publicApi} />",
+      "to": "null",
+      "why": "Settings > Agents: the upstream 'postiz' CLI and skill (npm install -g postiz, gitroomhq/postiz-agent) are upstream-branded tools"
+    },
+    {
+      "file": "apps/frontend/src/components/onboarding/onboarding.modal.tsx",
+      "from": "{cliSection}",
+      "to": "",
+      "why": "onboarding: same upstream CLI commands"
+    }
+  ]
 }

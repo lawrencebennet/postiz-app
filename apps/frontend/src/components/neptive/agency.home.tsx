@@ -48,12 +48,12 @@ export const AgencyHome = () => {
   }, [name, website, notes, fetch, mutate, router, toaster]);
 
   return (
-    <div className="flex flex-col gap-[20px] text-textColor">
-      <div>
-        <div className="text-[24px] font-[700]">Agency</div>
+    <div className="flex flex-col gap-[20px] text-textColor p-[12px] sm:p-[20px]">
+      <div className="flex flex-col gap-[6px] px-[4px] pt-[8px]">
+        <div className="nx-mono text-[11px] uppercase tracking-[0.06em] text-newTableText">[ Agenzia ]</div>
+        <div className="nx-display text-[32px] leading-[1] font-[600] tracking-[-0.02em]">Clienti</div>
         <div className="text-[13px] text-newTableText">
-          Clients, editorial plans, approvals, and work performed. Composer and
-          calendar stay in Neptive.
+          Piani editoriali, approvazioni e lavoro svolto per cliente. Post e calendario restano nel calendario.
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.8fr] gap-[16px]">
@@ -72,7 +72,7 @@ export const AgencyHome = () => {
                 <div>
                   <div className="font-[600]">{client.name}</div>
                   <div className="text-[12px] text-newTableText">
-                    {client.channelCount} channels
+                    {client.channelCount} {client.channelCount === 1 ? 'canale' : 'canali'}
                     {client.website ? ` · ${client.website}` : ''}
                   </div>
                 </div>

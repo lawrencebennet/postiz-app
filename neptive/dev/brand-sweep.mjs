@@ -139,7 +139,6 @@ async function adminSession(lang) {
     ['agents', '/agents'],
     ['plugs', '/plugs'],
     ['third-party', '/third-party'],
-    ['billing', '/billing'],
     ['admin-stats', '/admin/stats'],
     ['admin-errors', '/admin/errors'],
     ['err', '/err'],
@@ -152,22 +151,30 @@ async function adminSession(lang) {
     ['agency-casa-users', `/agency/${CASA}/users`],
     ['agency-aurora-ped', `/agency/${AURORA}/ped`],
     ['consent-signed-in', '/oauth/authorize?client_id=x&redirect_uri=http://localhost/cb&response_type=code'],
+    // last: without Stripe the upstream billing page gets a 401 and signs the user out (upstream behaviour)
+    ['billing', '/billing'],
   ]) {
     await page.goto(BASE + path, { waitUntil: 'domcontentloaded' }).catch(() => {});
     await check(ctx, page, lang, name);
   }
+  if (new URL(page.url()).pathname.startsWith('/auth')) {
+    await page.goto(BASE + '/auth/login', { waitUntil: 'networkidle' });
+    await page.fill('input[name="email"]', 'admin@neptive.com');
+    await page.fill('input[name="password"]', process.env.ADMIN_PASSWORD || 'neptive-local-admin');
+    await page.click('button[type="submit"]');
+    await page.waitForURL((u) => !u.pathname.startsWith('/auth'), { timeout: 60000 }).catch(() => {});
+  }
   // settings: every tab
   await page.goto(BASE + '/settings', { waitUntil: 'networkidle' });
   await check(ctx, page, lang, 'settings');
-  const tabs = await page.locator('[role="tab"], .settings-tab, [data-tab]').allInnerTexts().catch(() => []);
-  const tabNames = tabs.map((t) => t.trim()).filter(Boolean);
-  for (const t of [...new Set(tabNames)]) {
-    await page.locator('[role="tab"], .settings-tab, [data-tab]').filter({ hasText: t }).first().click().catch(() => {});
+  for (const t of ['global_settings', 'agents', 'teams', 'webhooks', 'autopost', 'sets', 'signatures', 'integrations', 'plugs', 'apps']) {
+    await page.goto(BASE + '/settings?tab=' + t, { waitUntil: 'networkidle' }).catch(() => {});
     await check(ctx, page, lang, `settings-tab:${t}`);
   }
   // post editor
   await page.goto(BASE + '/launches', { waitUntil: 'networkidle' });
-  const create = page.locator('button, div[role=button]').filter({ hasText: /create post|crea post|nuovo post|new post/i }).first();
+  const create = page.locator('button').filter({ hasText: /create post|crea post|nuovo post|new post/i }).first();
+  await create.waitFor({ timeout: 20000 }).catch(() => {});
   if (await create.count()) {
     await create.click().catch(() => {});
     await page.waitForTimeout(2500);

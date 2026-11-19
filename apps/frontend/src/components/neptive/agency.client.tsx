@@ -62,7 +62,7 @@ export const AgencyClientShell = ({
   const pathname = usePathname();
   const base = `/agency/${customerId}`;
   return (
-    <div className="flex flex-col gap-[16px] text-textColor">
+    <div className="flex flex-col gap-[16px] text-textColor p-[12px] sm:p-[20px]">
       <div className="flex items-end justify-between gap-[12px] px-[4px] pt-[8px]">
         <div className="flex flex-col gap-[6px]">
           <Link href="/agency" className="nx-mono text-[11px] uppercase tracking-[0.06em] text-newTableText hover:text-textColor">

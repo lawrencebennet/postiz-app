@@ -12,6 +12,6 @@ module.exports = [
   [/initialize\.sentry|data-domain|domain=\{|dubAnalytics/, 'analytics/monitoring identifiers (Sentry app name, Plausible/Datafast/Dub domain), only with their keys set; never shown'],
   [/linkedin\.component.*gitroom|MyPostizAgent|postiz\.example\.com/, 'placeholder text in rarely used inputs (LinkedIn company URL, Moltbook agent name, self-hosted URL). Known gap, low visibility'],
   [/href=|path: 'https:\/\/affiliate|chromewebstore|docs\.postiz|n8n-nodes|claude\.ai\/directory|cursor\.com\/marketplace|postiz\.com\/(?:terms|privacy)|gitroomhq\/postiz-app/, 'link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link'],
-  [/public\.component|onboarding\.modal/, 'known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label "postiz", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work'],
+  [/public\.component|onboarding\.modal/, 'upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector'],
   [/locales\/.*proudly_open_source/, 'billing FAQ text, only with Stripe; the github link inside is hidden by brand.css'],
 ];

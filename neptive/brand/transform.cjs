@@ -25,7 +25,13 @@ const QUICK = new RegExp(
   [...Object.keys(brand.replace.words), ...Object.keys(brand.assets)].map(escape).join('|')
 );
 
-function transform(source) {
+// cuts: exact snippets removed from one upstream file (elements that only make sense for upstream, e.g. its
+// CLI). The brand check fails when a snippet is no longer found, so an upstream change cannot hide silently.
+const CUTS = (brand.cuts || []).map((c) => ({ ...c, file: c.file.replace(/\\/g, '/') }));
+const cutsFor = (file) => (file ? CUTS.filter((c) => file.replace(/\\/g, '/').endsWith(c.file)) : []);
+
+function transform(source, file) {
+  for (const cut of cutsFor(file)) source = source.split(cut.from).join(cut.to);
   if (!QUICK.test(source)) return source;
   let out = source;
   for (const [re, to] of WORDS) out = out.replace(re, to);
@@ -33,4 +39,4 @@ function transform(source) {
   return out;
 }
 
-module.exports = { brand, transform, QUICK };
+module.exports = { brand, transform, QUICK, CUTS };

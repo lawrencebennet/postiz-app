@@ -107,145 +107,145 @@
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "'Install the Neptive CLI with `npm install -g postiz`, then install the Neptive skill with `npx skills add gitroomhq/postiz-agent`. Ask me for my Neptive API key and set it as the POSTIZ_API_KEY environment variable befo",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `claude mcp add postiz --transport http \"${oauthUrl}\"`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: json({ mcpServers: { postiz: { url: oauthUrl } } }),",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "servers: { postiz: { type: 'http', url: oauthUrl } },",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "mcpServers: { postiz: { serverUrl: oauthUrl } },",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `amp mcp add postiz ${oauthUrl}`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `# ~/.codex/config.toml\\n\\n[mcp_servers.postiz]\\nurl = \"${oauthUrl}\"`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "hint: 'Add to ~/.codex/config.toml, then run: codex mcp login postiz',",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: json({ mcpServers: { postiz: { url: oauthUrl } } }),",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: json({ postiz: { url: oauthUrl } }),",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `# ~/.hermes/config.yaml\\n\\nmcp_servers:\\n postiz:\\n url: \"${oauthUrl}\"\\n auth: oauth`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `openclaw mcp add postiz --url ${oauthUrl} --transport streamable-http --auth oauth && openclaw mcp login postiz`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `ncl groups config add-mcp-server --id <group-id> --name postiz --url ${oauthUrl}`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `claude mcp add --transport http postiz ${urlBase} --header \"Authorization: ${bearer}\"`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "postiz: {",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "postiz: {",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `# ~/.codex/config.toml\\n\\n[mcp_servers.postiz]\\nurl = \"${urlBase}\"\\nhttp_headers = { \"Authorization\" = \"${bearer}\" }`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `# ~/.hermes/config.yaml\\n\\nmcp_servers:\\n postiz:\\n url: \"${urlBase}\"\\n headers:\\n Authorization: \"${bearer}\"`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "postiz: {",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "config: `ncl groups config add-mcp-server --id <group-id> --name postiz --url ${mcpBase}/mcp/${apiKey}`,",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
@@ -257,37 +257,37 @@
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "code: 'npm install -g postiz',",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "label: 'Run: postiz auth:login',",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "code: 'postiz auth:login',",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "code: 'npx skills add gitroomhq/postiz-agent',",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "code: 'npm install -g postiz',",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",
    "file": "apps/frontend/src/components/public-api/public.component.tsx",
    "text": "code: 'npx skills add gitroomhq/postiz-agent',",
-   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+   "reason": "upstream CLI/MCP setup data: the CLI cards are removed by brand.json `cuts` (Settings > Agents, onboarding); what remains are the MCP server label in generated client configs (identifier) and the Grok chat-only instructions. Known gap: the Grok instructions and the Claude/Cursor directory links point at the Postiz Cloud connector"
   },
   {
    "kind": "frontend",

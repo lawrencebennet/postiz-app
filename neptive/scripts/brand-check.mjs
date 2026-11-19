@@ -26,7 +26,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const ROOT = new URL('../../', import.meta.url).pathname;
-const { transform, brand } = require('../brand/transform.cjs');
+const { transform, brand, CUTS } = require('../brand/transform.cjs');
 const ALLOW_FILE = join(ROOT, 'neptive/brand/brand-allowlist.json');
 const update = process.argv.includes('--update');
 const BRAND = /postiz|gitroom|পোস্টিজ|פוסטיז/i;
@@ -71,7 +71,7 @@ const FRONT = ['apps/frontend/src', 'libraries/react-shared-libraries/src', 'lib
 for (const base of FRONT) {
   for (const file of walk(join(ROOT, base))) {
     if (!/\.(tsx?|jsx?|mjs|json|scss|css)$/.test(file) || isNeptive(file) || /\.spec\.|\.test\./.test(file)) continue;
-    const out = transform(readFileSync(file, 'utf8'));
+    const out = transform(readFileSync(file, 'utf8'), file);
     if (!BRAND.test(strip(out))) continue;
     const kind = file.includes('/locales/') ? 'locale' : 'frontend';
     for (const line of out.split('\n')) {
@@ -91,6 +91,12 @@ for (const base of ['apps/backend/src', 'apps/orchestrator/src', 'libraries/nest
       if (literals.some((l) => BRAND.test(strip(l)))) findings.push({ kind: 'server', file: rel(file), text: norm(line) });
     }
   }
+}
+// cuts must still apply
+for (const cut of CUTS) {
+  const f = join(ROOT, cut.file);
+  if (!existsSync(f) || !readFileSync(f, 'utf8').includes(cut.from))
+    findings.push({ kind: 'cut', file: cut.file, text: `cut no longer matches upstream: ${cut.from}` });
 }
 // 3. logos
 const logos = JSON.parse(readFileSync(join(ROOT, 'neptive/brand/upstream-logos.json'), 'utf8')).sha256;

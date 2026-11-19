@@ -3,5 +3,5 @@
 const { transform } = require('../transform.cjs');
 
 module.exports = function neptiveBrandLoader(source) {
-  return transform(source);
+  return transform(source, this.resourcePath);
 };
