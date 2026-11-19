@@ -1,0 +1,79 @@
+# Local-only stack for the Neptive Postiz fork. Everything bound to 127.0.0.1, names prefixed pzn-.
+# No email provider, no social API keys, no LLM. Run via ./stack.sh or the commands in README.md.
+name: pzn
+services:
+  pzn-postgres:
+    image: postgres:17-alpine          # same major as production
+    container_name: pzn-postgres
+    environment:
+      POSTGRES_USER: postiz-app
+      POSTGRES_PASSWORD: pzn-local-only
+      POSTGRES_DB: postiz-db
+    ports: ["127.0.0.1:55432:5432"]
+    volumes: [pzn-postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postiz-app -d postiz-db"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  pzn-redis:
+    image: redis:7-alpine
+    container_name: pzn-redis
+    ports: ["127.0.0.1:56379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  pzn-temporal-postgres:
+    image: postgres:16-alpine
+    container_name: pzn-temporal-postgres
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: pzn-local-only
+    volumes: [pzn-temporal-postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  pzn-temporal-elasticsearch:          # needed: SQL visibility caps Text search attributes at 3, the app registers more
+    image: elasticsearch:7.17.27
+    container_name: pzn-temporal-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: -Xms256m -Xmx256m
+      cluster.routing.allocation.disk.threshold_enabled: "true"
+      cluster.routing.allocation.disk.watermark.low: 512mb
+      cluster.routing.allocation.disk.watermark.high: 256mb
+      cluster.routing.allocation.disk.watermark.flood_stage: 128mb
+    volumes: [pzn-temporal-es-data:/usr/share/elasticsearch/data]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs localhost:9200/_cluster/health >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+  pzn-temporal:
+    image: temporalio/auto-setup:1.28.1   # same as production
+    container_name: pzn-temporal
+    depends_on:
+      pzn-temporal-postgres: { condition: service_healthy }
+      pzn-temporal-elasticsearch: { condition: service_healthy }
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: temporal
+      POSTGRES_PWD: pzn-local-only
+      POSTGRES_SEEDS: pzn-temporal-postgres
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+      ENABLE_ES: "true"
+      ES_SEEDS: pzn-temporal-elasticsearch
+      ES_VERSION: v7
+      TEMPORAL_NAMESPACE: default
+    ports: ["127.0.0.1:57233:7233"]
+    volumes: ["../../dynamicconfig:/etc/temporal/config/dynamicconfig:ro"]
+volumes:
+  pzn-postgres-data:
+  pzn-temporal-postgres-data:
+  pzn-temporal-es-data:
