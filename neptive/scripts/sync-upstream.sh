@@ -59,6 +59,10 @@ echo "(review these: auto-merged does not mean the Neptive hook still fits)"
 say "4. other upstream changes that matter to Neptive code"
 git diff --stat "$BASE" HEAD -- libraries/nestjs-libraries/src/database/prisma/schema.prisma 'apps/backend/src/services/auth' apps/frontend/src/proxy.ts 'apps/frontend/src/components/layout' | tail -15
 
+say "4b. brand check (user-visible upstream branding, logos, swapped modules; see neptive/WHITE-LABEL.md)"
+node neptive/scripts/brand-check.mjs | tee "$OUT/brand-check.txt"; BRC=${PIPESTATUS[0]}
+[[ $BRC == 0 ]] || echo "!! brand check FAILED: fix or allow-list (with a reason) before merging into neptive-next"
+
 if [[ $BUILD == 1 ]]; then
   source neptive/dev/env.sh
   say "5. install (frozen lockfile) + prisma generate"
@@ -101,4 +105,5 @@ else
 fi
 
 say "done. Branch $BRANCH (local only, NOT pushed). Reports in $OUT"
+[[ ${BRC:-0} == 0 ]] || echo "!! reminder: brand check failed (step 4b, $OUT/brand-check.txt)"
 echo "Next: read the surface list + schema flags above, run the browser smoke (neptive/dev/qa.mjs), then merge $BRANCH into neptive-next yourself."

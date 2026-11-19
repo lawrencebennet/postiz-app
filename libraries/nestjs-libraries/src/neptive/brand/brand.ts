@@ -3,10 +3,12 @@
 import brand from './brand.json';
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
-const WORDS: Array<[RegExp, string]> = Object.entries(brand.replace.words).map(([from, to]) => [
-  new RegExp(`\\b${escape(from)}\\b`, 'g'),
-  to as string,
-]);
+const WORDS: Array<[RegExp, string]> = Object.entries(brand.replace.words)
+  .filter(([from]) => !from.startsWith('$'))
+  .map(([from, to]) => [
+    /^[\x00-\x7f]+$/.test(from) ? new RegExp(`\\b${escape(from)}\\b`, 'g') : new RegExp(escape(from), 'g'),
+    to as string,
+  ]);
 // links to the upstream product in text (emails, messages): point them at the Neptive site instead
 const LINKS: Array<[RegExp, string]> = [
   [/https?:\/\/(?:www\.|docs\.|platform\.|affiliate\.)?postiz\.com[^\s"'<)]*/gi, brand.website],

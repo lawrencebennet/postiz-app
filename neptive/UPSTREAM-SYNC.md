@@ -43,7 +43,7 @@ After it: read the merge surface and schema flags, refresh the dump if it is old
 
 `libraries/nestjs-libraries/src/neptive/**`, `apps/backend/src/neptive/**`, `apps/frontend/src/components/neptive/**`,
 `apps/frontend/src/app/(app)/(portal)/**`, `apps/frontend/src/app/(app)/(site)/agency/**`,
-`apps/frontend/public/neptive-demo/**`, `neptive/**`, `docs/superpowers/**`, root `AGENTS.md`.
+`apps/frontend/public/neptive-demo/**`, `apps/frontend/public/neptive/**`, `neptive/**`, `docs/superpowers/**`, root `AGENTS.md`.
 
 ## Merge surface today: upstream files the Neptive layer modifies
 
@@ -62,10 +62,19 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 | `libraries/nestjs-libraries/src/temporal/temporal.module.ts` | import + `interceptors` line in the worker `workerOptions` (variant publish gate) | new on `neptive-next` (post variants) |
 | `package.json`, `pnpm-lock.yaml` | `embla-carousel-react` dependency | auto-merged (lockfile verified with `--frozen-lockfile`) |
 | `.gitignore` | ignore Next-generated `apps/frontend/AGENTS.md`/`CLAUDE.md` | auto-merged |
-| `apps/frontend/src/app/(app)/auth/layout.tsx`, `auth/login/page.tsx`, `auth/page.tsx`, `components/auth/register.tsx`, `components/ui/logo-text.component.tsx` | white-label WIP from production working tree (no Postiz marketing panel, Neptive logo, no sign-up pitch) | **`auth/layout.tsx` conflicted** (upstream wrapped it in `MantineWrapper` + `Toaster`) |
+| `apps/frontend/next.config.js` | white-label: import + `withNeptiveBrand(nextConfig)` (build transform, module swaps, asset rewrites, `/auth` redirect) | new (white-label) |
+| `apps/frontend/postcss.config.mjs` | white-label: Neptive theme PostCSS plugin after tailwind | new (white-label) |
+| `apps/frontend/src/app/(app)/auth/layout.tsx` | renders `NeptiveAuthShell` instead of the upstream frame (marketing panel, testimonials) | **conflicted** in v2.26.0 (upstream added `MantineWrapper` + `Toaster`, both kept) |
+| `libraries/nestjs-libraries/src/services/email.service.ts` | white-label: import + `neptiveEmail()` call in `sendEmailSync` (subject, body, sender, layout) | new (white-label) |
+| `libraries/nestjs-libraries/src/chat/start.mcp.ts` | white-label: MCP server name from brand (5 `name:` lines + import) | new (white-label) |
+| `libraries/helpers/src/swagger/load.swagger.ts` | white-label: API title | new (white-label) |
+| new files in upstream folders | `apps/frontend/src/app/manifest.ts`, `app/(app)/opengraph-image.png`, `app/(app)/apple-icon.png` | no merge risk unless upstream adds the same files |
 
-The five auth/logo files are the part most likely to grow with the white-label work; the cheapest long-term shape is a
-single Neptive component swapped in at one place rather than edits spread over these files.
+**21 upstream files** differ from `upstream/main` (18 modified + 3 new, `package.json`/`pnpm-lock.yaml` counted).
+The white-label adds 6 modified + 3 new; it also removed the earlier draft edits of `auth/login/page.tsx`,
+`auth/page.tsx`, `components/auth/register.tsx`, `components/ui/logo-text.component.tsx` (back to upstream).
+How the white-label works and how to check it: `neptive/WHITE-LABEL.md`. `sync-upstream.sh` runs the brand
+check as step 4b.
 
 ## What to re-check by hand after each merge (the script cannot)
 
@@ -78,3 +87,6 @@ single Neptive component swapped in at one place rather than edits spread over t
    `apps/orchestrator/src/activities/post.activity.ts` still publishes only through `postSocial` / `postSocialPending` /
    `postComment` (grep the provider calls `.post(` / `.postPending(` / `.comment(`). A new publishing activity name must be
    added to `NEPTIVE_GATED_ACTIVITIES` in `libraries/nestjs-libraries/src/neptive/publish-gate/variant-publish.gate.ts`.
+7. White-label: `node neptive/scripts/brand-check.mjs` passes (also step 4b of the script); if it reports that an
+   upstream module swapped by Neptive changed (login form, logos, font module), compare it with the Neptive
+   copy in `apps/frontend/src/components/neptive/brand/`. Browser: `node neptive/dev/brand-sweep.mjs --langs=it,en`.

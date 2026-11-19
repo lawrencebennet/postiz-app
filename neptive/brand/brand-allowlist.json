@@ -1,0 +1,809 @@
+{
+ "$comment": "Accepted brand-check findings. Every entry needs a reason.",
+ "entries": [
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/app/(app)/layout.tsx",
+   "text": "data-domain=\"postiz.com\"",
+   "reason": "analytics/monitoring identifiers (Sentry app name, Plausible/Datafast/Dub domain), only with their keys set; never shown"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/app/(app)/layout.tsx",
+   "text": "domain={!!process.env.IS_GENERAL ? 'postiz.com' : 'gitroom.com'}",
+   "reason": "analytics/monitoring identifiers (Sentry app name, Plausible/Datafast/Dub domain), only with their keys set; never shown"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/auth/register.tsx",
+   "text": "href={`https://postiz.com/terms`}",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/auth/register.tsx",
+   "text": "href={`https://postiz.com/privacy`}",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/billing/faq.component.tsx",
+   "text": "} will live forever. You can check out the entire code or use it for personal projects. To view the open-source repository, <a href=\"https://github.com/gitroomhq/postiz-app\" target=\"_blank\" style=\"text-decoration: underl",
+   "reason": "billing screens and emails: only when STRIPE_PUBLISHABLE_KEY is set, which Neptive does not use; text is runtime-branded anyway"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/developer/developer.component.tsx",
+   "text": "href=\"https://docs.postiz.com/public-api/oauth\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/developer/developer.component.tsx",
+   "text": "href=\"https://docs.postiz.com/public-api/oauth\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/launches/add.provider.component.tsx",
+   "text": "'https://chromewebstore.google.com/detail/postiz/cidhffagahknaeodkplfbcpfeielnkjl?hl=en',",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/launches/helpers/linkedin.component.tsx",
+   "text": "placeholder=\"https://www.linkedin.com/company/gitroom\"",
+   "reason": "placeholder text in rarely used inputs (LinkedIn company URL, Moltbook agent name, self-hosted URL). Known gap, low visibility"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/launches/web3/providers/moltbook.provider.tsx",
+   "text": "placeholder=\"MyPostizAgent\"",
+   "reason": "placeholder text in rarely used inputs (LinkedIn company URL, Moltbook agent name, self-hosted URL). Known gap, low visibility"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/layout/chrome.extension.component.tsx",
+   "text": "href=\"https://chromewebstore.google.com/detail/postiz/cidhffagahknaeodkplfbcpfeielnkjl\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/layout/dubAnalytics.tsx",
+   "text": "refer: 'postiz.pro',",
+   "reason": "analytics/monitoring identifiers (Sentry app name, Plausible/Datafast/Dub domain), only with their keys set; never shown"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/layout/top.menu.tsx",
+   "text": "path: 'https://affiliate.postiz.com',",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/oauth/self.hosted.component.tsx",
+   "text": "placeholder=\"https://postiz.example.com\"",
+   "reason": "placeholder text in rarely used inputs (LinkedIn company URL, Moltbook agent name, self-hosted URL). Known gap, low visibility"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/onboarding/onboarding.modal.tsx",
+   "text": "href=\"https://docs.postiz.com/public-api/introduction\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "Claude: 'https://claude.ai/directory/postiz',",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "Cursor: 'https://cursor.com/marketplace/postiz',",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "'Install the Neptive CLI with `npm install -g postiz`, then install the Neptive skill with `npx skills add gitroomhq/postiz-agent`. Ask me for my Neptive API key and set it as the POSTIZ_API_KEY environment variable befo",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `claude mcp add postiz --transport http \"${oauthUrl}\"`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: json({ mcpServers: { postiz: { url: oauthUrl } } }),",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "servers: { postiz: { type: 'http', url: oauthUrl } },",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "mcpServers: { postiz: { serverUrl: oauthUrl } },",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `amp mcp add postiz ${oauthUrl}`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `# ~/.codex/config.toml\\n\\n[mcp_servers.postiz]\\nurl = \"${oauthUrl}\"`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "hint: 'Add to ~/.codex/config.toml, then run: codex mcp login postiz',",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: json({ mcpServers: { postiz: { url: oauthUrl } } }),",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: json({ postiz: { url: oauthUrl } }),",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `# ~/.hermes/config.yaml\\n\\nmcp_servers:\\n postiz:\\n url: \"${oauthUrl}\"\\n auth: oauth`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `openclaw mcp add postiz --url ${oauthUrl} --transport streamable-http --auth oauth && openclaw mcp login postiz`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `ncl groups config add-mcp-server --id <group-id> --name postiz --url ${oauthUrl}`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `claude mcp add --transport http postiz ${urlBase} --header \"Authorization: ${bearer}\"`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "postiz: {",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "postiz: {",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `# ~/.codex/config.toml\\n\\n[mcp_servers.postiz]\\nurl = \"${urlBase}\"\\nhttp_headers = { \"Authorization\" = \"${bearer}\" }`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "postiz: { url: urlBase, headers: { Authorization: bearer } },",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `# ~/.hermes/config.yaml\\n\\nmcp_servers:\\n postiz:\\n url: \"${urlBase}\"\\n headers:\\n Authorization: \"${bearer}\"`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "postiz: {",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "config: `ncl groups config add-mcp-server --id <group-id> --name postiz --url ${mcpBase}/mcp/${apiKey}`,",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "href=\"https://docs.postiz.com/mcp/introduction\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "code: 'npm install -g postiz',",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "label: 'Run: postiz auth:login',",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "code: 'postiz auth:login',",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "code: 'npx skills add gitroomhq/postiz-agent',",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "code: 'npm install -g postiz',",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "code: 'npx skills add gitroomhq/postiz-agent',",
+   "reason": "known gap: MCP/CLI setup snippets in Settings > Agents/Dev and onboarding (server label \"postiz\", `npm install -g postiz`, the upstream CLI and skill): functional commands of upstream tools, kept so they still work"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "href=\"https://docs.postiz.com/cli/introduction\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "href=\"https://docs.postiz.com/public-api\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "frontend",
+   "file": "apps/frontend/src/components/public-api/public.component.tsx",
+   "text": "href=\"https://www.npmjs.com/package/n8n-nodes-postiz\"",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/ar/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive مفتوح المصدر بكل فخر! نحن نؤمن بثقافة أخلاقية وشفافة، مما يعني أن Neptive سيبقى للأبد. يمكنك الاطلاع على الكود بالكامل أو استخدامه في مشاريعك الشخصية. لعرض مستودع الم",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/bn/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive গর্বের সাথে ওপেন-সোর্স! আমরা নৈতিক ও স্বচ্ছ সংস্কৃতিতে বিশ্বাস করি, যার মানে Neptive চিরকাল টিকে থাকবে। আপনি চাইলে সম্পূর্ণ কোড দেখতে পারেন বা ব্যক্তিগত প্রকল্পে ব্যব",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/de/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive ist stolz darauf, Open Source zu sein! Wir glauben an eine ethische und transparente Kultur, was bedeutet, dass Neptive für immer bestehen wird. Du kannst den gesamte",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/en/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive is proudly open-source! We believe in an ethical and transparent culture, meaning that Neptive will live forever. You can check out the entire code or use it for pers",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/es/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"¡Neptive es orgullosamente de código abierto! Creemos en una cultura ética y transparente, lo que significa que Neptive vivirá para siempre. Puedes revisar todo el código o u",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/fr/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive est fièrement open source ! Nous croyons en une culture éthique et transparente, ce qui signifie que Neptive existera toujours. Vous pouvez consulter l'intégralité du",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/he/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive היא קוד פתוח בגאווה! אנו מאמינים בתרבות אתית ושקופה, מה שאומר ש-Neptive תמשיך להתקיים לנצח. אתם יכולים לעיין בכל הקוד או להשתמש בו לפרויקטים אישיים. לצפייה במאגר הקוד",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/it/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive è orgogliosamente open-source! Crediamo in una cultura etica e trasparente, il che significa che Neptive vivrà per sempre. Puoi consultare tutto il codice o usarlo pe",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/ja/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptiveは誇りを持ってオープンソースです！私たちは倫理的で透明性のある文化を信じており、Neptiveは永遠に存続します。全てのコードを確認したり、個人プロジェクトで利用したりできます。オープンソースリポジトリを見るには、<a href=\\\"https://github.com/gitroomhq/postiz-app\\\" target=\\",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/ka_ge/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive არის ღია კოდის! გამჭვირვალე კულტურა — შეგიძლიათ ნახოთ მთელი კოდი ან გამოიყენოთ პირადი პროექტებისთვის. ღია რეპოზიტორიის სანახავად <a href=\\\"https://github.com/gitroomh",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/ko/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive는 자랑스럽게 오픈소스입니다! 우리는 윤리적이고 투명한 문화를 믿으며, Neptive는 영원히 존재할 것입니다. 전체 코드를 확인하거나 개인 프로젝트에 사용할 수 있습니다. 오픈소스 저장소를 보려면 <a href=\\\"https://github.com/gitroomhq/postiz-app\\\" targ",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/pt/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"O Neptive é orgulhosamente open-source! Acreditamos em uma cultura ética e transparente, o que significa que o Neptive viverá para sempre. Você pode conferir todo o código ou",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/ru/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive — это полностью open-source! Мы верим в этичную и прозрачную культуру, а значит, Neptive будет существовать всегда. Вы можете ознакомиться с полным кодом или использо",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/tr/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive gururla açık kaynaklıdır! Etik ve şeffaf bir kültüre inanıyoruz, bu da Neptive'in sonsuza dek yaşayacağı anlamına gelir. Tüm kodu inceleyebilir veya kişisel projeleri",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/vi/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive tự hào là mã nguồn mở! Chúng tôi tin vào một văn hóa đạo đức và minh bạch, nghĩa là Neptive sẽ tồn tại mãi mãi. Bạn có thể xem toàn bộ mã nguồn hoặc sử dụng cho các d",
+   "reason": "billing FAQ text, only with Stripe; the github link inside is hidden by brand.css"
+  },
+  {
+   "kind": "locale",
+   "file": "libraries/react-shared-libraries/src/translation/locales/zh/translation.json",
+   "text": "\"faq_postiz_gitroom_is_proudly_open_source\": \"Neptive自豪地开源！我们相信道德和透明的文化，这意味着Neptive将永远存在。您可以查看全部代码或将其用于个人项目。要查看开源仓库，<a href=\\\"https://github.com/gitroomhq/postiz-app\\\" target=\\\"_blank\\\" style=\\\"text-decoration: underline",
+   "reason": "link to upstream docs/marketing: the element is hidden by brand.css (a[href*=postiz.com], gitroomhq, chromewebstore ...), or only built into a hidden link"
+  },
+  {
+   "kind": "server",
+   "file": "apps/backend/src/api/routes/billing.controller.ts",
+   "text": "'Your Postiz subscription is set to cancel',",
+   "reason": "billing screens and emails: only when STRIPE_PUBLISHABLE_KEY is set, which Neptive does not use; text is runtime-branded anyway"
+  },
+  {
+   "kind": "server",
+   "file": "apps/backend/src/api/routes/copilot.controller.ts",
+   "text": "const memory = await mastra.getAgent('postiz').getMemory();",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "apps/backend/src/api/routes/copilot.controller.ts",
+   "text": "const memory = await mastra.getAgent('postiz').getMemory();",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "apps/backend/src/api/routes/no.auth.integrations.controller.ts",
+   "text": "'This Postiz workspace reached the channel limit of its plan, it has to be upgraded before another channel can be added',",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "apps/orchestrator/src/workflows/digest.email.workflow.ts",
+   "text": ": `[Postiz] Your latest notifications`,",
+   "reason": "runtime-branded: emails go through neptiveEmail(), HttpException messages through NeptiveBrandErrorsInterceptor (listmonk newsletter is not configured)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/load.tools.service.ts",
+   "text": "id: 'postiz',",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/load.tools.service.ts",
+   "text": "name: 'postiz',",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "'Enter the address of your Postiz instance, for example https://postiz.example.com',",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "'Enter the address of your Postiz instance, for example https://postiz.example.com',",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "'Enter the API key of your Postiz instance',",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "'Your Postiz instance must be reachable from the internet over https',",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "'Your Postiz instance rejected this API key',",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "'Your Postiz instance refused the connection (403), make sure nothing in front of it blocks requests from Postiz Cloud',",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "`${url.origin} does not look like a Postiz instance, or it runs a version older than v2.19.0`,",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "`Your Postiz instance is missing tools this connection needs (${missing.join(', ')}). Update it to the latest Postiz version and connect again`,",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "`Could not find a Postiz MCP server at ${url.origin}. Paste the MCP URL from Settings > Agents / Dev (Agents, Developers or Public API on older versions) of your instance, and make sure it runs Postiz v2.19.0 or newer`,",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "`${name} returned an unexpected answer from your Postiz instance`",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "`Your Postiz instance answered ${name} in a format this connection does not know, update the instance to the latest Postiz version`",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "`${name} is not available on your Postiz instance: the feature it needs is not set up there, or the instance needs an update to the latest Postiz version`",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "`Your Postiz instance runs an older version of ${name}, update it to the latest Postiz version to use it`",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "throw new Error(text || `${name} failed on your Postiz instance`);",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "const client = new Client({ name: 'Postiz Cloud', version: '1.0.0' });",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "return `Your Postiz instance (${origin}) rejected the saved API key, it was probably rotated, so this connection was removed. Connect Postiz again to keep using your instance`;",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "return `Your Postiz instance (${origin}) refused the request (403), make sure nothing in front of it blocks requests from Postiz Cloud`;",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "return `Your Postiz instance (${origin}) did not answer ${name} in time`;",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/mcp.relay.service.ts",
+   "text": "return `Your Postiz instance (${origin}) could not run ${name}: ${err.message}`;",
+   "reason": "MCP relay to self-hosted instances: Postiz Cloud feature, off unless the relay env is set"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/start.mcp.ts",
+   "text": "const agent = mastra.getAgent('postiz');",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/tools/integration.trigger.tool.ts",
+   "text": "'The channel was disconnected because its token expired, the user needs to reconnect it in Postiz'",
+   "reason": "tool descriptions read by AI agents (MCP / copilot), not shown in the UI. Known gap: an agent may repeat \"Postiz\" to the user"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/tools/integration.trigger.tool.ts",
+   "text": "'The provider rejected the credentials even after refreshing the token, the user needs to reconnect the channel in Postiz'",
+   "reason": "tool descriptions read by AI agents (MCP / copilot), not shown in the UI. Known gap: an agent may repeat \"Postiz\" to the user"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/tools/post.analytics.tool.ts",
+   "text": "'The post is published but it is not linked to its post on the platform, link it from the post statistics in the Postiz app',",
+   "reason": "tool descriptions read by AI agents (MCP / copilot), not shown in the UI. Known gap: an agent may repeat \"Postiz\" to the user"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/tools/upload.from.url.tool.ts",
+   "text": "'The public http(s) URL of the image or video to upload. Local files and private hosts are not supported, use the Postiz CLI (postiz upload) or POST /public/v1/upload instead'",
+   "reason": "tool descriptions read by AI agents (MCP / copilot), not shown in the UI. Known gap: an agent may repeat \"Postiz\" to the user"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/chat/tools/upload.from.url.tool.ts",
+   "text": "error: `Failed to upload media from URL: ${message}${causeText}. Only public http(s) URLs work: upload local or private files with the Postiz CLI (postiz upload, https://docs.postiz.com/cli/introduction) or the public AP",
+   "reason": "tool descriptions read by AI agents (MCP / copilot), not shown in the UI. Known gap: an agent may repeat \"Postiz\" to the user"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/agencies/agencies.service.ts",
+   "text": "'Your Agency has been approved and added to Postiz 🚀',",
+   "reason": "upstream Postiz Cloud only (Stripe customers / agency directory of postiz.com); not reachable on a Neptive install without Stripe"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/agencies/agencies.service.ts",
+   "text": "You can <a href=\"https://postiz.com/agencies/${agency?.slug}\">check it here</a><br />",
+   "reason": "upstream Postiz Cloud only (Stripe customers / agency directory of postiz.com); not reachable on a Neptive install without Stripe"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/agencies/agencies.service.ts",
+   "text": "'nevo@postiz.com',",
+   "reason": "upstream Postiz Cloud only (Stripe customers / agency directory of postiz.com); not reachable on a Neptive install without Stripe"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/oauth/oauth.service.ts",
+   "text": "'Could not reach HubSpot to finish installing Postiz, please try again',",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/organizations/organization.repository.ts",
+   "text": ": `${saasName}+` + makeId(10) + '@postiz.com',",
+   "reason": "upstream Postiz Cloud only (Stripe customers / agency directory of postiz.com); not reachable on a Neptive install without Stripe"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/organizations/organization.service.ts",
+   "text": "throw new HttpException('No Postiz account found for this email', 400);",
+   "reason": "runtime-branded: emails go through neptiveEmail(), HttpException messages through NeptiveBrandErrorsInterceptor (listmonk newsletter is not configured)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/users/users.service.ts",
+   "text": "'Your Postiz login was changed',",
+   "reason": "runtime-branded: emails go through neptiveEmail(), HttpException messages through NeptiveBrandErrorsInterceptor (listmonk newsletter is not configured)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/database/prisma/users/users.service.ts",
+   "text": "`An administrator changed the login for your Postiz account. ` +",
+   "reason": "runtime-branded: emails go through neptiveEmail(), HttpException messages through NeptiveBrandErrorsInterceptor (listmonk newsletter is not configured)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/discord.provider.ts",
+   "text": "value: 'Discord rejected the Postiz bot token, reconnecting will not help',",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/facebook.provider.ts",
+   "text": "'Postiz is not authorized to publish as this page, please reconnect the channel',",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/mastodon.custom.provider.ts",
+   "text": "form.append('client_name', 'Postiz');",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/threads.provider.ts",
+   "text": "\"One of the media URLs is invalid or inaccessible, make sure it's being uploaded to Postiz first\",",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/tiktok.business.provider.ts",
+   "text": "'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content, and keeps those for photo posts only - a video arrives in the inbox without its caption (the description is empty or just",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/tiktok.business.provider.ts",
+   "text": "'Media is pulled by TikTok from its URL, so the media must be uploaded to Postiz and the media domain must be a verified URL property of the TikTok Business app.',",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/tiktok.provider.ts",
+   "text": "'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content, and keeps those for photo posts only - a video arrives in the inbox without its caption (the description is empty or just",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/tiktok.provider.ts",
+   "text": "'You have to upload the picture/video to Postiz when sending a URL',",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/tumblr.provider.ts",
+   "text": "const TUMBLR_USER_AGENT = 'Postiz/1.0 (+https://postiz.com)';",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/wordpress.provider.ts",
+   "text": "const WORDPRESS_USER_AGENT = 'Postiz/1.0 (+https://postiz.com)';",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/integrations/social/youtube.provider.ts",
+   "text": "return `because your organization's Google Workspace session policy invalidated its access. Ask your Google Workspace admin to mark Postiz as a trusted app and turn on \"Exempt trusted apps\" (https://support.google.com/a/",
+   "reason": "known gap: provider/integration error text stored on a failed post or channel and shown in the admin error preview (not runtime-branded yet; HttpException messages are)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/newsletter/providers/listmonk.provider.ts",
+   "text": "subject: 'Welcome to Postiz 🚀',",
+   "reason": "runtime-branded: emails go through neptiveEmail(), HttpException messages through NeptiveBrandErrorsInterceptor (listmonk newsletter is not configured)"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/sentry/initialize.sentry.ts",
+   "text": "name: `Postiz ${capitalize(appName)}`,",
+   "reason": "analytics/monitoring identifiers (Sentry app name, Plausible/Datafast/Dub domain), only with their keys set; never shown"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "event?.data?.object?.metadata?.service !== 'gitroom' &&",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "email: email.indexOf('@') > -1 ? email : `${email}@postiz.com`,",
+   "reason": "upstream Postiz Cloud only (Stripe customers / agency directory of postiz.com); not reachable on a Neptive install without Stripe"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": ": `${users.users[0].user.email}@postiz.com`,",
+   "reason": "upstream Postiz Cloud only (Stripe customers / agency directory of postiz.com); not reachable on a Neptive install without Stripe"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "metadata: { service: 'gitroom', id },",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "metadata: { service: 'gitroom', id },",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": ": `${user.email}@postiz.com`,",
+   "reason": "upstream Postiz Cloud only (Stripe customers / agency directory of postiz.com); not reachable on a Neptive install without Stripe"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "service: 'gitroom',",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "service: 'gitroom',",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "service: 'gitroom',",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "subscription.metadata?.service !== 'gitroom' ||",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": ".filter((f) => f.metadata?.service === 'gitroom')",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "subscription.metadata?.service !== 'gitroom' ||",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/services/stripe.service.ts",
+   "text": "metadata: { service: 'gitroom', organizationId },",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  },
+  {
+   "kind": "server",
+   "file": "libraries/nestjs-libraries/src/temporal/temporal.heartbeat.ts",
+   "text": "const DETAILS = Symbol.for('postiz.heartbeatDetails');",
+   "reason": "internal identifier (Mastra agent id, Stripe metadata, symbol key): never shown, renaming breaks upstream compatibility"
+  }
+ ]
+}

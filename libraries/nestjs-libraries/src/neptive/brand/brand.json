@@ -11,8 +11,11 @@
       "Postiz": "Neptive",
       "POSTIZ": "NEPTIVE",
       "Gitroom": "Neptive",
-      "GitRoom": "Neptive"
-    }
+      "GitRoom": "Neptive",
+      "পোস্টিজ": "Neptive",
+      "פוסטיז": "Neptive"
+    },
+    "$comment": "Whole words, case-sensitive. ASCII words match on word boundaries (PostizAdapter, POSTIZ_API_KEY stay); the transliterations in the bn/he locales match as they are."
   },
   "assets": {
     "/postiz.svg": "/neptive/brand/mark.svg",

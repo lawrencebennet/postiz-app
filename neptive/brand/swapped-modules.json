@@ -1,0 +1,6 @@
+{
+ "apps/frontend/src/components/new-layout/logo.tsx": "6ba7cf4d8d8a6df6580c534d4bc6f4cf3fdc24ea65a3c892b0f58953e1c0f17c",
+ "apps/frontend/src/components/ui/logo-text.component.tsx": "b1f1adf54f7f79d0ce970269385c6e14281fc0491fc1e471865e1fefa7418798",
+ "apps/frontend/src/fonts/plus-jakarta-sans/plus.jakarta.sans.font.ts": "3468558cbf092affd8560b277a1c30c3dfbe1cf2f7e055e6a3bb142be719ec26",
+ "apps/frontend/src/components/auth/login.tsx": "9bdd18fd957481d21393debb40ce546f84ccccec384c2820ea32b31fb3b79409"
+}

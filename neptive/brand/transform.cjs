@@ -12,7 +12,8 @@ const brand = JSON.parse(fs.readFileSync(BRAND_FILE, 'utf8'));
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
 
 // \b on both sides: "Postiz" inside PostizAdapter or POSTIZ_API_KEY is not a word of its own and is left alone
-const WORDS = Object.entries(brand.replace.words).map(([from, to]) => [new RegExp(`\\b${escape(from)}\\b`, 'g'), to]);
+const wordRe = (w) => (/^[\x00-\x7f]+$/.test(w) ? new RegExp(`\\b${escape(w)}\\b`, 'g') : new RegExp(escape(w), 'g'));
+const WORDS = Object.entries(brand.replace.words).map(([from, to]) => [wordRe(from), to]);
 
 // asset paths, only as whole quoted / url() values: '/postiz.svg', "/favicon.ico", url(/logo.svg)
 const ASSETS = Object.entries(brand.assets).map(([from, to]) => [
