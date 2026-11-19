@@ -133,13 +133,8 @@ export class NeptivePortalController {
   }
 
   @Get('/approvals')
-  async approvalsList(@GetNeptivePortal() portal: NeptivePortalIdentity) {
-    const rows = await this.approvals.list(
-      portal.orgId,
-      portal.customerId,
-      'PENDING_CLIENT_APPROVAL'
-    );
-    return rows.map((row) => this.approvals.visibleForClient(row));
+  approvalsList(@GetNeptivePortal() portal: NeptivePortalIdentity) {
+    return this.approvals.listForPortal(portal.orgId, portal.customerId);
   }
 
   @Get('/approvals/:id')

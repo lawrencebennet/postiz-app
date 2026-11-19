@@ -10,9 +10,12 @@ import { NeptiveStrategyService } from '@gitroom/nestjs-libraries/neptive/servic
 import { NeptiveDeliverableService } from '@gitroom/nestjs-libraries/neptive/services/deliverable.service';
 import { NeptiveReportService } from '@gitroom/nestjs-libraries/neptive/services/report.service';
 import { NeptiveDashboardService } from '@gitroom/nestjs-libraries/neptive/services/dashboard.service';
+import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
+import { NeptiveVariantService } from '@gitroom/nestjs-libraries/neptive/services/variant.service';
 
 const providers = [
   NeptiveRepository,
+  NeptiveVariantRepository,
   PostizAdapter,
   NeptiveClientService,
   NeptivePortalAuthService,
@@ -23,6 +26,7 @@ const providers = [
   NeptiveDeliverableService,
   NeptiveReportService,
   NeptiveDashboardService,
+  NeptiveVariantService,
 ];
 
 @Module({

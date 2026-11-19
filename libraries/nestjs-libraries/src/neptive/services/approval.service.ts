@@ -15,6 +15,11 @@ import { NeptiveActivityService } from '@gitroom/nestjs-libraries/neptive/servic
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import { canTransitionApproval } from '@gitroom/nestjs-libraries/neptive/domain/state-machines';
 import { notFoundIfMissing } from '@gitroom/nestjs-libraries/neptive/domain/scope';
+import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
+import {
+  VARIANT_REFUSAL_MESSAGES,
+  checkVariantAction,
+} from '@gitroom/nestjs-libraries/neptive/domain/variants';
 import {
   CreateNeptiveApprovalCommentDto,
   CreateNeptiveApprovalDto,
@@ -38,8 +43,65 @@ export class NeptiveApprovalService {
     private repo: NeptiveRepository,
     private clients: NeptiveClientService,
     private activities: NeptiveActivityService,
-    private postiz: PostizAdapter
+    private postiz: PostizAdapter,
+    private variants: NeptiveVariantRepository
   ) {}
+
+  /**
+   * The variant row behind an approval, if its post group was attached to a PED
+   * slot as a variant. Every decision and client comment goes through
+   * `assertVariantAllows`, so the slot rules hold for the portal approvals pages,
+   * the PED page and direct API calls alike.
+   */
+  private async variantFor(orgId: string, customerId: string, postGroup: string) {
+    const variant = await this.variants.variantByGroup(orgId, postGroup);
+    if (variant && variant.customerId !== customerId) {
+      throw new ForbiddenException();
+    }
+    return variant;
+  }
+
+  private assertVariantAllows(
+    variant: Awaited<ReturnType<NeptiveApprovalService['variantFor']>>,
+    kind: 'decide' | 'comment',
+    actorType: NeptiveApprovalActorType
+  ) {
+    if (!variant) return;
+    const check = checkVariantAction({ variant, slot: variant.item, kind });
+    if (!check.ok) {
+      const message = VARIANT_REFUSAL_MESSAGES[check.reason];
+      throw actorType === 'CLIENT_USER'
+        ? new ForbiddenException(message)
+        : new BadRequestException(message);
+    }
+  }
+
+  /** Approvals a client may still act on: receded / removed variants are hidden. */
+  async listForPortal(orgId: string, customerId: string) {
+    const rows = await this.list(orgId, customerId, 'PENDING_CLIENT_APPROVAL');
+    const variantRows = await this.variants.variantsByGroups(
+      orgId,
+      rows.map((row) => row.postGroup)
+    );
+    const byGroup = new Map(variantRows.map((row) => [row.postGroup, row]));
+    return rows
+      .filter((row) => {
+        const variant = byGroup.get(row.postGroup);
+        return (
+          !variant ||
+          checkVariantAction({ variant, slot: variant.item, kind: 'decide' }).ok
+        );
+      })
+      .map((row) => {
+        const variant = byGroup.get(row.postGroup);
+        return this.visibleForClient({
+          ...row,
+          variant: variant
+            ? { id: variant.id, label: variant.label, itemTitle: variant.item?.title }
+            : null,
+        });
+      });
+  }
 
   private async withPost<T extends { postGroup: string }>(
     orgId: string,
@@ -136,6 +198,9 @@ export class NeptiveApprovalService {
       throw new ForbiddenException();
     }
 
+    const variant = await this.variantFor(orgId, customerId, approval.postGroup);
+    this.assertVariantAllows(variant, 'decide', actor.type);
+
     const extra: Record<string, unknown> = {};
     if (body.status === 'PENDING_INTERNAL_REVIEW') {
       extra.submittedAt = new Date();
@@ -150,16 +215,28 @@ export class NeptiveApprovalService {
       extra.rejectedNote = body.comment;
     }
 
-    const updated = await this.repo.transitionApproval(
-      orgId,
-      customerId,
-      id,
-      approval.status,
-      body.status as NeptiveApprovalStatus,
-      extra
-    );
-    if (!updated.count) {
-      throw new BadRequestException('Approval was updated concurrently');
+    if (variant && body.status === 'APPROVED') {
+      // approving a variant confirms it for its slot, atomically
+      await this.variants.confirmVariant({
+        orgId,
+        customerId,
+        approvalId: id,
+        from: approval.status,
+        itemId: variant.itemId,
+        variantId: variant.id,
+      });
+    } else {
+      const updated = await this.repo.transitionApproval(
+        orgId,
+        customerId,
+        id,
+        approval.status,
+        body.status as NeptiveApprovalStatus,
+        extra
+      );
+      if (!updated.count) {
+        throw new BadRequestException('Approval was updated concurrently');
+      }
     }
 
     await this.repo.addApprovalAction({
@@ -185,7 +262,11 @@ export class NeptiveApprovalService {
     if (body.status === 'APPROVED') {
       await this.activities.system(orgId, customerId, {
         type: 'POST_APPROVED',
-        title: `Content approved${approval.title ? `: ${approval.title}` : ''}`,
+        title: variant
+          ? `Variante ${variant.label} confermata${
+              variant.item?.title ? `: ${variant.item.title}` : ''
+            }`
+          : `Content approved${approval.title ? `: ${approval.title}` : ''}`,
         relatedPostGroup: approval.postGroup,
       });
     }
@@ -200,7 +281,15 @@ export class NeptiveApprovalService {
     body: CreateNeptiveApprovalCommentDto,
     actor: { type: NeptiveApprovalActorType; id: string; name: string }
   ) {
-    await this.getOrForbid(orgId, customerId, id);
+    const approval = await this.getOrForbid(orgId, customerId, id);
+    if (actor.type === 'CLIENT_USER') {
+      // a client cannot write on a variant that was not chosen or was removed
+      this.assertVariantAllows(
+        await this.variantFor(orgId, customerId, approval.postGroup),
+        'comment',
+        actor.type
+      );
+    }
     const visibility: NeptiveVisibility =
       actor.type === 'CLIENT_USER'
         ? 'CLIENT_VISIBLE'

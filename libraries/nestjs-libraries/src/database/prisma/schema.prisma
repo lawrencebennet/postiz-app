@@ -1889,6 +1889,7 @@ enum NeptiveApprovalActionType {
   CHANGES_REQUESTED
   REJECTED
   RESUBMITTED
+  REOPENED
 }
 
 enum NeptiveStrategyKind {
@@ -1920,6 +1921,7 @@ enum NeptiveActivityType {
   PED_APPROVED
   REPORT_GENERATED
   OTHER
+  SLOT_REOPENED
 }
 
 enum NeptiveActivitySource {
@@ -2038,19 +2040,50 @@ model NeptiveEditorialPlan {
 }
 
 model NeptiveEditorialPlanItem {
-  id         String               @id @default(uuid())
-  planId     String
-  postGroup  String?
-  title      String
-  notes      String?
-  position   Int                  @default(0)
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
-  plan       NeptiveEditorialPlan @relation(fields: [planId], references: [id])
+  id                 String                   @id @default(uuid())
+  planId             String
+  postGroup          String?
+  title              String
+  notes              String?
+  position           Int                      @default(0)
+  // Slot decision: the NeptivePlanItemVariant the client approved. Only used when
+  // the item has variant rows; a legacy single-post item keeps using postGroup.
+  confirmedVariantId String?
+  confirmedAt        DateTime?
+  // Soft delete: variant rows keep pointing at the item so their publish gate holds.
+  deletedAt          DateTime?
+  createdAt          DateTime                 @default(now())
+  updatedAt          DateTime                 @updatedAt
+  plan               NeptiveEditorialPlan     @relation(fields: [planId], references: [id])
+  variants           NeptivePlanItemVariant[]
 
   @@index([planId])
   @@index([postGroup])
   @@map("neptive_editorial_plan_items")
+}
+
+// One alternative (A, B, C...) for a plan item slot. Each variant is a whole Postiz
+// post group. A row is never hard-deleted (removedAt) because its existence is what
+// keeps an unconfirmed variant out of publishing (see neptive/publish-gate).
+model NeptivePlanItemVariant {
+  id              String                   @id @default(uuid())
+  orgId           String
+  customerId      String
+  itemId          String
+  postGroup       String
+  label           String
+  position        Int                      @default(0)
+  createdByUserId String?
+  removedAt       DateTime?
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  item            NeptiveEditorialPlanItem @relation(fields: [itemId], references: [id])
+
+  @@unique([orgId, postGroup])
+  @@index([itemId])
+  @@index([orgId, customerId])
+  @@index([postGroup])
+  @@map("neptive_plan_item_variants")
 }
 
 model NeptiveContentApproval {

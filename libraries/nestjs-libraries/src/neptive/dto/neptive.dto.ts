@@ -1,9 +1,12 @@
 import {
+  ArrayMaxSize,
+  IsArray,
   IsDateString,
   IsEmail,
   IsIn,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
 } from 'class-validator';
 
@@ -300,4 +303,44 @@ export class ConsumeNeptiveMagicLinkDto {
   @IsString()
   @MinLength(10)
   token: string;
+}
+
+// ---- post variants (A, B, C...) of a PED slot
+
+export class AttachNeptiveVariantDto {
+  @IsString()
+  @MinLength(1)
+  postGroup: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(12)
+  label?: string;
+}
+
+export class UpdateNeptiveVariantDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(12)
+  label: string;
+}
+
+export class ReorderNeptiveVariantsDto {
+  @IsArray()
+  @ArrayMaxSize(50)
+  @IsString({ each: true })
+  variantIds: string[];
+}
+
+export class SendNeptiveVariantDto {
+  @IsOptional()
+  @IsString()
+  variantId?: string;
+}
+
+export class ReopenNeptiveSlotDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  comment?: string;
 }

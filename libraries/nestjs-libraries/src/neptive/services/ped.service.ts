@@ -11,6 +11,8 @@ import { NeptiveRepository } from '@gitroom/nestjs-libraries/neptive/repositorie
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import { NeptiveClientService } from '@gitroom/nestjs-libraries/neptive/services/client.service';
 import { NeptiveActivityService } from '@gitroom/nestjs-libraries/neptive/services/activity.service';
+import { NeptiveVariantService } from '@gitroom/nestjs-libraries/neptive/services/variant.service';
+import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
 import { canTransitionPed } from '@gitroom/nestjs-libraries/neptive/domain/state-machines';
 import { notFoundIfMissing } from '@gitroom/nestjs-libraries/neptive/domain/scope';
 import { pedReviewUpdate } from '@gitroom/nestjs-libraries/neptive/domain/ped-review';
@@ -27,64 +29,20 @@ export class NeptivePedService {
     private repo: NeptiveRepository,
     private clients: NeptiveClientService,
     private activities: NeptiveActivityService,
-    private postiz: PostizAdapter
+    private postiz: PostizAdapter,
+    private variants: NeptiveVariantService,
+    private variantRows: NeptiveVariantRepository
   ) {}
 
   private async projectPlan(
     plan: NeptiveEditorialPlan & { items: Array<any> },
     includeInternal: boolean
   ) {
+    // each item is a slot with 1..N variants; see NeptiveVariantService.projectItem
     const items = await Promise.all(
-      plan.items.map(async (item) => {
-        const approval = item.postGroup
-          ? await this.repo.approvalByGroup(plan.orgId, item.postGroup)
-          : null;
-        let content = null;
-        let linkStatus = item.postGroup ? 'MISSING' : 'UNLINKED';
-        if (item.postGroup) {
-          try {
-            content = await this.postiz.contentByGroup(
-              plan.orgId,
-              plan.customerId,
-              item.postGroup,
-              item.title
-            );
-            linkStatus = 'LINKED';
-          } catch {
-            // Keep stale links visible to agency users for repair, but never
-            // expose a foreign group or its media to a client.
-          }
-        }
-        const safeApproval = approval
-          ? {
-              id: approval.id,
-              status: approval.status,
-              submittedAt: approval.submittedAt,
-              approvedAt: approval.approvedAt,
-              requestedChangesNote: approval.requestedChangesNote,
-              rejectedNote: approval.rejectedNote,
-              comments: approval.comments
-                .filter(
-                  (comment) =>
-                    includeInternal || comment.visibility === 'CLIENT_VISIBLE'
-                )
-                .map((comment) => ({
-                  id: comment.id,
-                  authorName: comment.authorName,
-                  body: comment.body,
-                  visibility: comment.visibility,
-                  createdAt: comment.createdAt,
-                })),
-            }
-          : null;
-        return {
-          ...item,
-          ...(includeInternal ? {} : { notes: undefined }),
-          content,
-          linkStatus,
-          approval: safeApproval,
-        };
-      })
+      plan.items.map((item) =>
+        this.variants.projectItem(plan, item, includeInternal)
+      )
     );
     return {
       ...plan,
@@ -214,6 +172,11 @@ export class NeptivePedService {
         customerId,
         body.postGroup
       );
+      if (await this.variantRows.variantByGroup(orgId, body.postGroup)) {
+        throw new BadRequestException(
+          'This post is a variant of another plan item'
+        );
+      }
     }
     return this.repo.addPedItem({
       planId: ped.id,

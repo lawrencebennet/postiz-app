@@ -27,7 +27,8 @@ export class NeptiveDashboardService {
     const [peds, pending, upcoming, published, recentWork, reports] =
       await Promise.all([
         this.peds.list(org.id, customerId),
-        this.approvals.list(org.id, customerId, 'PENDING_CLIENT_APPROVAL'),
+        // what the client can act on now (receded variants excluded)
+        this.approvals.listForPortal(org.id, customerId),
         this.postiz.postsForCustomer(org.id, customerId, 'scheduled'),
         this.postiz.postsForCustomer(org.id, customerId, 'published'),
         this.activities.list(org.id, customerId, false),
@@ -58,8 +59,9 @@ export class NeptiveDashboardService {
       materials,
       reports,
     ] = await Promise.all([
-      this.peds.list(org.id, customerId),
-      this.approvals.list(org.id, customerId, 'PENDING_CLIENT_APPROVAL'),
+      // portal projections: no internal notes or comments, no receded variants
+      this.peds.listForPortal(org.id, customerId),
+      this.approvals.listForPortal(org.id, customerId),
       this.postiz.postsForCustomer(org.id, customerId, 'scheduled'),
       this.postiz.postsForCustomer(org.id, customerId, 'published'),
       this.activities.list(org.id, customerId, true),
@@ -73,9 +75,7 @@ export class NeptiveDashboardService {
       currentPed: peds.find((ped) =>
         ['ACTIVE', 'APPROVED', 'CLIENT_REVIEW'].includes(ped.status)
       ) || peds[0],
-      awaitingApproval: pending.map((item) =>
-        this.approvals.visibleForClient(item)
-      ),
+      awaitingApproval: pending,
       upcoming: upcoming.posts?.slice(0, 6) || [],
       published: published.posts?.slice(0, 6) || [],
       recentActivities: recentWork.slice(0, 8),

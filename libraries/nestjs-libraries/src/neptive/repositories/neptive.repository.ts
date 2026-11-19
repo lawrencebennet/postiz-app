@@ -15,6 +15,18 @@ import {
   Prisma,
 } from '@prisma/client';
 
+// Live items only (removed items are soft-deleted so their variants stay gated),
+// each with all its variant rows (removed ones included, for the publish rule).
+const PED_ITEMS_INCLUDE = {
+  where: { deletedAt: null },
+  orderBy: { position: 'asc' as const },
+  include: {
+    variants: {
+      orderBy: [{ position: 'asc' as const }, { createdAt: 'asc' as const }],
+    },
+  },
+};
+
 @Injectable()
 export class NeptiveRepository {
   constructor(private prisma: PrismaService) {}
@@ -172,7 +184,7 @@ export class NeptiveRepository {
   listPeds(orgId: string, customerId: string) {
     return this.prisma.neptiveEditorialPlan.findMany({
       where: { orgId, customerId, deletedAt: null },
-      include: { items: { orderBy: { position: 'asc' } } },
+      include: { items: PED_ITEMS_INCLUDE },
       orderBy: { periodStart: 'desc' },
     });
   }
@@ -180,7 +192,7 @@ export class NeptiveRepository {
   pedById(orgId: string, customerId: string, id: string) {
     return this.prisma.neptiveEditorialPlan.findFirst({
       where: { id, orgId, customerId, deletedAt: null },
-      include: { items: { orderBy: { position: 'asc' } } },
+      include: { items: PED_ITEMS_INCLUDE },
     });
   }
 
@@ -240,8 +252,11 @@ export class NeptiveRepository {
   }
 
   deletePedItem(planId: string, itemId: string) {
-    return this.prisma.neptiveEditorialPlanItem.deleteMany({
-      where: { id: itemId, planId },
+    // soft delete: a removed item must keep its variant rows, which keep
+    // unconfirmed variants out of publishing
+    return this.prisma.neptiveEditorialPlanItem.updateMany({
+      where: { id: itemId, planId, deletedAt: null },
+      data: { deletedAt: new Date() },
     });
   }
 

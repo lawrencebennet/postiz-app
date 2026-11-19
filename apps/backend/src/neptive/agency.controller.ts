@@ -19,8 +19,14 @@ import { NeptiveStrategyService } from '@gitroom/nestjs-libraries/neptive/servic
 import { NeptiveDeliverableService } from '@gitroom/nestjs-libraries/neptive/services/deliverable.service';
 import { NeptiveReportService } from '@gitroom/nestjs-libraries/neptive/services/report.service';
 import { NeptiveDashboardService } from '@gitroom/nestjs-libraries/neptive/services/dashboard.service';
+import { NeptiveVariantService } from '@gitroom/nestjs-libraries/neptive/services/variant.service';
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import {
+  AttachNeptiveVariantDto,
+  ReopenNeptiveSlotDto,
+  ReorderNeptiveVariantsDto,
+  SendNeptiveVariantDto,
+  UpdateNeptiveVariantDto,
   CreateNeptiveActivityDto,
   CreateNeptiveApprovalCommentDto,
   CreateNeptiveApprovalDto,
@@ -51,7 +57,8 @@ export class NeptiveAgencyController {
     private deliverables: NeptiveDeliverableService,
     private reports: NeptiveReportService,
     private dashboard: NeptiveDashboardService,
-    private postiz: PostizAdapter
+    private postiz: PostizAdapter,
+    private variants: NeptiveVariantService
   ) {}
 
   @Get('/clients')
@@ -201,6 +208,109 @@ export class NeptiveAgencyController {
     @Param('itemId') itemId: string
   ) {
     return this.peds.removeItem(org.id, customerId, id, itemId);
+  }
+
+  // ---- post variants of a PED item (slot)
+
+  @Get('/clients/:customerId/peds/:id/items/:itemId')
+  pedsItemGet(
+    @GetOrgFromRequest() org: Organization,
+    @Param('customerId') customerId: string,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string
+  ) {
+    return this.variants.getItem(org.id, customerId, id, itemId);
+  }
+
+  @Post('/clients/:customerId/peds/:id/items/:itemId/variants')
+  variantAttach(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Param('customerId') customerId: string,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() body: AttachNeptiveVariantDto
+  ) {
+    return this.variants.attach(
+      org.id,
+      customerId,
+      id,
+      itemId,
+      { id: user.id, name: user.name || user.email },
+      body
+    );
+  }
+
+  @Post('/clients/:customerId/peds/:id/items/:itemId/variants/reorder')
+  variantReorder(
+    @GetOrgFromRequest() org: Organization,
+    @Param('customerId') customerId: string,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() body: ReorderNeptiveVariantsDto
+  ) {
+    return this.variants.reorder(org.id, customerId, id, itemId, body);
+  }
+
+  @Put('/clients/:customerId/peds/:id/items/:itemId/variants/:variantId')
+  variantUpdate(
+    @GetOrgFromRequest() org: Organization,
+    @Param('customerId') customerId: string,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Param('variantId') variantId: string,
+    @Body() body: UpdateNeptiveVariantDto
+  ) {
+    return this.variants.update(org.id, customerId, id, itemId, variantId, body);
+  }
+
+  @Delete('/clients/:customerId/peds/:id/items/:itemId/variants/:variantId')
+  variantRemove(
+    @GetOrgFromRequest() org: Organization,
+    @Param('customerId') customerId: string,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Param('variantId') variantId: string
+  ) {
+    return this.variants.remove(org.id, customerId, id, itemId, variantId);
+  }
+
+  @Post('/clients/:customerId/peds/:id/items/:itemId/send-to-client')
+  variantSend(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Param('customerId') customerId: string,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() body: SendNeptiveVariantDto
+  ) {
+    return this.variants.sendToClient(
+      org.id,
+      customerId,
+      id,
+      itemId,
+      { id: user.id, name: user.name || user.email },
+      body
+    );
+  }
+
+  @Post('/clients/:customerId/peds/:id/items/:itemId/reopen')
+  slotReopen(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Param('customerId') customerId: string,
+    @Param('id') id: string,
+    @Param('itemId') itemId: string,
+    @Body() body: ReopenNeptiveSlotDto
+  ) {
+    return this.variants.reopen(
+      org.id,
+      customerId,
+      id,
+      itemId,
+      { id: user.id, name: user.name || user.email },
+      body
+    );
   }
 
   @Get('/clients/:customerId/approvals')
