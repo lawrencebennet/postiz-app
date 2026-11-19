@@ -45,7 +45,7 @@ deliberately, before the deploy. The preflight step stops below 14 GB free.
 
 ## Order of the runbook (the script does exactly this)
 
-Run `neptive/scripts/deploy-prod.sh --dry-run` first and read it. Then `--i-have-approval`. It stops at the first
+Deploy the rehearsed image: `neptive/scripts/deploy-prod.sh --dry-run --sha d54aa4c8` first and read it, then the same with `--i-have-approval` instead of `--dry-run` (without `--sha` the script builds the current HEAD, which is a different image: later commits only touched docs/dev tooling, but then it is not the one rehearsed; `--sha` reuses the local image if it exists). It stops at the first
 failing command; resume with `--from <step> --date <same date>` (the date names the backups and the rollback tag).
 
 1. **build** (workstation): tree clean, commit pushed to `origin/neptive-next`, `git archive` into a temp dir,
