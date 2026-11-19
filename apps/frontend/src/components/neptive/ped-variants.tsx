@@ -171,15 +171,16 @@ const SectionLabel: FC<{ children: ReactNode }> = ({ children }) => (
   </div>
 );
 
-const Comments: FC<{ variant: PedVariant; mode: 'client' | 'agency' }> = ({
-  variant,
-  mode,
-}) => {
+const Comments: FC<{
+  variant: PedVariant;
+  mode: 'client' | 'agency';
+  multiple: boolean;
+}> = ({ variant, mode, multiple }) => {
   const comments = variant.approval?.comments || [];
   if (!comments.length) {
     return (
       <div className="text-[12px] text-newTableText">
-        Nessun commento su questa variante.
+        {multiple ? 'Nessun commento su questa variante.' : 'Nessun commento.'}
       </div>
     );
   }
@@ -308,8 +309,9 @@ const usePortalAction = (onDone: () => Promise<unknown> | void) => {
 
 const ClientComment: FC<{
   variant: PedVariant;
+  multiple: boolean;
   onDone: () => Promise<unknown> | void;
-}> = ({ variant, onDone }) => {
+}> = ({ variant, multiple, onDone }) => {
   const { call, busy, error, setError } = usePortalAction(onDone);
   const [comment, setComment] = useState('');
   useEffect(() => {
@@ -326,7 +328,7 @@ const ClientComment: FC<{
       <textarea
         id={`comment-${variant.id}`}
         className={clsx(areaClass, '!min-h-[64px] w-full')}
-        placeholder={`Scrivi un commento sulla variante ${variant.label}`}
+        placeholder={multiple ? `Scrivi un commento sulla variante ${variant.label}` : 'Scrivi un commento'}
         value={comment}
         onChange={(event) => setComment(event.target.value)}
       />
@@ -364,9 +366,10 @@ const ClientComment: FC<{
  */
 const DecisionBar: FC<{
   variant: PedVariant;
+  multiple: boolean;
   onDone: () => Promise<unknown> | void;
   className?: string;
-}> = ({ variant, onDone, className }) => {
+}> = ({ variant, multiple, onDone, className }) => {
   const { call, busy, error, setError } = usePortalAction(onDone);
   const [mode, setMode] = useState<'idle' | 'changes'>('idle');
   const [note, setNote] = useState('');
@@ -388,7 +391,7 @@ const DecisionBar: FC<{
             htmlFor={`changes-${variant.id}`}
             className="text-[12px] text-newTableText"
           >
-            Cosa vuoi cambiare nella variante {variant.label}?
+            {multiple ? `Cosa vuoi cambiare nella variante ${variant.label}?` : 'Cosa vuoi cambiare?'}
           </label>
           <textarea
             id={`changes-${variant.id}`}
@@ -437,13 +440,15 @@ const DecisionBar: FC<{
               disabled={busy}
               onClick={() => transition({ status: 'APPROVED' })}
             >
-              Approva {variant.label}
+              {multiple ? `Approva ${variant.label}` : 'Approva'}
             </Button>
           </div>
-          <div className="text-[11px] text-newTableText mt-[6px] text-center lg:text-left">
-            Approvando la variante {variant.label} la confermi per questa data;
-            le altre restano visibili come storico.
-          </div>
+          {multiple && (
+            <div className="text-[11px] text-newTableText mt-[6px] text-center lg:text-left">
+              Approvando la variante {variant.label} la confermi per questa data;
+              le altre restano visibili come storico.
+            </div>
+          )}
         </>
       )}
       {error && (
@@ -876,12 +881,12 @@ export const PedSlotCard: FC<{
               </section>
               <section>
                 <SectionLabel>Commenti</SectionLabel>
-                <Comments variant={selected} mode={mode} />
+                <Comments variant={selected} mode={mode} multiple={multiple} />
               </section>
               {mode === 'client' && (
                 <>
-                  <ClientComment variant={selected} onDone={onChanged} />
-                  <DecisionBar variant={selected} onDone={onChanged} className="hidden lg:block" />
+                  <ClientComment variant={selected} multiple={multiple} onDone={onChanged} />
+                  <DecisionBar variant={selected} multiple={multiple} onDone={onChanged} className="hidden lg:block" />
                 </>
               )}
             </div>
@@ -891,6 +896,7 @@ export const PedSlotCard: FC<{
             // actions at the bottom of the screen for as long as this variant is on screen
             <DecisionBar
               variant={selected}
+              multiple={multiple}
               onDone={onChanged}
               className="lg:hidden sticky bottom-0 z-[5] -mx-[12px] md:-mx-[18px] px-[12px] md:px-[18px] pt-[10px] pb-[calc(10px+env(safe-area-inset-bottom))] bg-newBgColorInner/95 backdrop-blur border-t border-newTableBorder"
             />

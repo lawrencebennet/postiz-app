@@ -163,7 +163,7 @@ export function variantGateMessage(blocked: GateBlock[]): string {
   const first = blocked[0];
   if (first?.reason === 'NOT_CONFIRMED') {
     return `Neptive: not published. This post is variant ${first.label || '?'}${
-      first.itemTitle ? ` of "${first.itemTitle}"` : ''
+      first.itemTitle ? ` of “${first.itemTitle}”` : ''
     } and it is not the variant confirmed by the client.`;
   }
   return 'Neptive: not published. The publish gate could not identify this post.';
