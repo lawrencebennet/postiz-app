@@ -33,19 +33,22 @@ echo "new upstream commits since last merge: $(git rev-list --count "$BASE..$UPS
 
 say "2. fresh branch $BRANCH from $BASE + merge $UPSTREAM_REF (merge commit, no rebase/squash)"
 git checkout -b "$BRANCH" "$BASE" || die "cannot create branch"
-if git merge --no-ff -m "Merge $UPSTREAM_REF into $BRANCH" "$UPSTREAM_REF"; then
-  echo "merge clean"
+MLOG="$OUT/merge.log"
+if git merge --no-ff -m "Merge $UPSTREAM_REF into $BRANCH" "$UPSTREAM_REF" > "$MLOG" 2>&1; then
+  tail -3 "$MLOG"; echo "merge clean"
 else
-  CONF="$(git diff --name-only --diff-filter=U)"
-  if [[ -n "$CONF" ]]; then
-    echo "CONFLICTS ($(echo "$CONF" | wc -l)):"; echo "$CONF" | sed 's/^/  /'; echo "$CONF" > "$OUT/conflicts.txt"
+  cat "$MLOG" | grep -vE '^ |create mode|delete mode' | tail -20
+  if [[ -f "$(git rev-parse --git-dir)/MERGE_HEAD" ]]; then
+    # includes conflicts that git rerere already re-resolved and staged (they no longer show as 'unmerged')
+    CONF="$(grep -E '^CONFLICT' "$MLOG" | sed -E 's/.*Merge conflict in //; s/^CONFLICT \([^)]*\): //' | sort -u)"
+    echo; echo "CONFLICTS ($(echo "$CONF" | grep -c .)); lines marked 'Staged ... using previous resolution' were re-applied by rerere: REVIEW them:"
+    echo "$CONF" | sed 's/^/  /'; echo "$CONF" > "$OUT/conflicts.txt"
     echo
-    echo "Merge left IN PROGRESS on $BRANCH. Resolve (keep upstream behaviour + the Neptive hooks), 'git add', 'git commit',"
-    echo "then re-run this script with BASE=$BRANCH after 'git checkout' back, or run the checks in UPSTREAM-SYNC.md by hand."
-    echo "To give up: git merge --abort && git checkout $BASE && git branch -D $BRANCH"
+    echo "Merge left IN PROGRESS on $BRANCH (throwaway branch). Resolve + 'git add' + 'git commit', then re-run the checks"
+    echo "(BASE=$BRANCH $0). To give up: git merge --abort && git checkout $BASE && git branch -D $BRANCH"
     exit 2
   fi
-  die "merge failed without conflicts (see output above)"
+  die "merge failed without a merge in progress (see $MLOG)"
 fi
 
 say "3. merge surface: files BOTH upstream and Neptive changed since the merge base"
