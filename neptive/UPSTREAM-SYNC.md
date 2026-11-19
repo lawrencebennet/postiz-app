@@ -61,6 +61,7 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 | `libraries/helpers/src/utils/custom.fetch.func.ts` | send `neptive-portal` header in NOT_SECURED mode | auto-merged |
 | `libraries/nestjs-libraries/src/temporal/temporal.module.ts` | import + `interceptors` line in the worker `workerOptions` (variant publish gate) | new on `neptive-next` (post variants) |
 | `package.json`, `pnpm-lock.yaml` | `embla-carousel-react` dependency | auto-merged (lockfile verified with `--frozen-lockfile`) |
+| `package.json`, `pnpm-lock.yaml` | **Next 16.4.2 -> 16.4.6** (`next` dependency, `pnpm.overrides.next`, `eslint-config-next`): see "Deliberate divergences" | will conflict if upstream moves `next` on the same lines: keep the higher version |
 | `.gitignore` | ignore Next-generated `apps/frontend/AGENTS.md`/`CLAUDE.md` | auto-merged |
 | `apps/frontend/next.config.js` | white-label: import + `withNeptiveBrand(nextConfig)` (build transform, module swaps, asset rewrites, `/auth` redirect) | new (white-label) |
 | `apps/frontend/postcss.config.mjs` | white-label: Neptive theme PostCSS plugin after tailwind | new (white-label) |
@@ -75,6 +76,14 @@ The white-label adds 6 modified + 3 new; it also removed the earlier draft edits
 `auth/page.tsx`, `components/auth/register.tsx`, `components/ui/logo-text.component.tsx` (back to upstream).
 How the white-label works and how to check it: `neptive/WHITE-LABEL.md`. `sync-upstream.sh` runs the brand
 check as step 4b.
+
+## Deliberate divergences (drop when upstream catches up)
+
+- **Next 16.4.6 instead of upstream's 16.4.2.** `next build` on <=16.4.4 exits non-zero on the first run with
+  `SecurityFatalError` (npm advisories GHSA-mfr8-8qww-v76h and GHSA-vc7v-qv4w-wrv8, moderate). In a Docker build that
+  is a failed deploy. Three lines in `package.json` (`dependencies.next`, `devDependencies.eslint-config-next`,
+  `pnpm.overrides.next`) plus the lockfile; own commit, revert it to go back. Drop this row when upstream's `next` is
+  >= 16.4.5: on the next merge, take upstream's version if it is >= 16.4.6, otherwise keep ours.
 
 ## What to re-check by hand after each merge (the script cannot)
 

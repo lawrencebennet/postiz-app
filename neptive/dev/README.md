@@ -80,8 +80,8 @@ The existing single-post items are not touched by the seed. Loading variants by 
 
 ## Known quirks
 
-- Next 16.4.2 prints a "security upgrade recommendation" and exits on some starts; `stack.sh app` retries
-  automatically. It is an upstream dependency decision, not made here.
+- Next <=16.4.4 prints a "security upgrade recommendation" and exits on the first start/build; this fork is on
+  16.4.6 (see `neptive/UPSTREAM-SYNC.md`, "Deliberate divergences"). The retry loop in `stack.sh app` stays as a safety net.
 - Temporal needs Elasticsearch (SQL visibility caps Text search attributes at 3 and the app registers more).
 - `.env` is generated, not copied from production. `DISABLE_REGISTRATION=true`, `NOT_SECURED=true`.
 - The `/agency/<customer>/ped` page content is wider than its container (calendar overflows to the right in the
