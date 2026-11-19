@@ -223,3 +223,12 @@ identical to the repo's `dynamicconfig/`) is what finally lets the checkout go.
 - Post-deploy checks: 3 apps online with 0 restarts, no 5xx in the container's nginx log, 72 requests over 2 minutes to
   `/auth/login`, `/portal/login`, `/api/neptive/portal/me` returned 200/200/401 (0 x 502), QUEUE posts 30 unchanged,
   unexpired portal sessions 5 before and after, public screenshots in `neptive/dev/.data/shots/live/`.
+
+## Static privacy page (host nginx, outside the image)
+
+`https://portal.neptive.com/privacy` is served by the HOST nginx, not by the app: `location = /privacy` in
+`/etc/nginx/sites-available/portal.neptive.com.conf` aliases `/var/www/portal-neptive-static/privacy.html`.
+Source of truth: `neptive/static/privacy.html`. To update: edit it, then
+`scp neptive/static/privacy.html neptive-hostinger-01:/var/www/portal-neptive-static/privacy.html` (no reload needed).
+Image deploys do not touch it. Data-deletion instructions for Meta: `https://portal.neptive.com/privacy#eliminazione-dati`.
+Added 2026-11-19; nginx config backup in `/root/backups/nginx-portal.neptive.com.conf-before-privacy-20261119T193939Z`.
