@@ -17,6 +17,7 @@ import {
   NeptiveField,
   areaClass,
   fieldClass,
+  formatPeriod,
   formatWhen,
   nextApprovalActions,
   nextPedActions,
@@ -342,7 +343,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
                 <div>
                   <div className="text-[11px] text-newTableText uppercase tracking-[0.08em]">Piano editoriale</div>
                   <div className="text-[22px] font-[700]">{ped.name}</div>
-                  <div className="text-[12px] text-newTableText">{ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}</div>
+                  <div className="text-[12px] text-newTableText">{formatPeriod(ped.periodStart, ped.periodEnd)}</div>
                 </div>
                 <NeptiveBadge tone={statusTone(ped.status)}>{statusLabel(ped.status)}</NeptiveBadge>
               </div>
@@ -838,7 +839,7 @@ const ReportsPanel = ({ customerId }: { customerId: string }) => {
               <div className="flex items-center gap-[8px] mt-[4px]">
                 <NeptiveBadge tone={statusTone(report.status)}>{statusLabel(report.status)}</NeptiveBadge>
                 <span className="text-[12px] text-newTableText">
-                  {report.periodStart?.slice(0, 10)} → {report.periodEnd?.slice(0, 10)}
+                  {formatPeriod(report.periodStart, report.periodEnd)}
                 </span>
               </div>
               {report.narrative && (
