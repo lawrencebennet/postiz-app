@@ -69,9 +69,10 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 | `libraries/nestjs-libraries/src/services/email.service.ts` | white-label: import + `neptiveEmail()` call in `sendEmailSync` (subject, body, sender, layout) | new (white-label) |
 | `libraries/nestjs-libraries/src/chat/start.mcp.ts` | white-label: MCP server name from brand (5 `name:` lines + import) | new (white-label) |
 | `libraries/helpers/src/swagger/load.swagger.ts` | white-label: API title | new (white-label) |
+| `apps/backend/src/api/routes/copilot.controller.ts` | `/copilot/chat` and `/copilot/agent` answer 503 when `OPENAI_API_KEY` is missing instead of leaving the request open (2 lines; see "Deliberate divergences") | new (found in the production-image rehearsal) |
 | new files in upstream folders | `apps/frontend/src/app/manifest.ts`, `app/(app)/opengraph-image.png`, `app/(app)/apple-icon.png` | no merge risk unless upstream adds the same files |
 
-**21 upstream files** differ from `upstream/main` (18 modified + 3 new, `package.json`/`pnpm-lock.yaml` counted).
+**22 upstream files** differ from `upstream/main` (19 modified + 3 new, `package.json`/`pnpm-lock.yaml` counted).
 The white-label adds 6 modified + 3 new; it also removed the earlier draft edits of `auth/login/page.tsx`,
 `auth/page.tsx`, `components/auth/register.tsx`, `components/ui/logo-text.component.tsx` (back to upstream).
 How the white-label works and how to check it: `neptive/WHITE-LABEL.md`. `sync-upstream.sh` runs the brand
@@ -84,6 +85,11 @@ check as step 4b.
   is a failed deploy. Three lines in `package.json` (`dependencies.next`, `devDependencies.eslint-config-next`,
   `pnpm.overrides.next`) plus the lockfile; own commit, revert it to go back. Drop this row when upstream's `next` is
   >= 16.4.5: on the next merge, take upstream's version if it is >= 16.4.6, otherwise keep ours.
+
+- **`/copilot/*` answers 503 without an LLM key** (`copilot.controller.ts`). Upstream returns without responding, the
+  request hangs until nginx times out (60 s) and nginx then marks the backend down for ~10 s, so unrelated requests
+  get 502. Reproduced on the production image locally (4 portal requests failed with `no live upstreams`). Drop when
+  upstream answers or closes the response in that branch.
 
 ## What to re-check by hand after each merge (the script cannot)
 
