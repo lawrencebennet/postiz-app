@@ -68,6 +68,11 @@ export class Post {
   @IsString()
   group: string;
 
+  // a channel that keeps a date of its own, the others use the post date
+  @IsOptional()
+  @IsDateString()
+  date?: string;
+
   @ValidateIf((o) => o.type !== 'draft')
   @ValidateNested()
   @Type(() => EmptySettings, {
@@ -107,8 +112,7 @@ export class CreatePostDto {
   @IsNumber()
   inter?: number;
 
-  // explicit opt-in to publish an already-PUBLISHED post again; without it a
-  // schedule/now save targeting a published post is rejected
+  // no longer needed to publish an already-PUBLISHED post again, accepted and ignored
   @IsOptional()
   @IsBoolean()
   republish?: boolean;

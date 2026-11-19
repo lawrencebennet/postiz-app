@@ -7,6 +7,7 @@ import {
   SocialProvider,
 } from '@gitroom/nestjs-libraries/integrations/social/social.integrations.interface';
 import dayjs from 'dayjs';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import {
   BadBody,
   Disconnect,
@@ -25,7 +26,7 @@ import { Tool } from '@gitroom/nestjs-libraries/integrations/tool.decorator';
   [
     'TikTok Business can have one video or one picture or multiple pictures (up to 35), it cannot be without an attachment.',
     'content_posting_method=DIRECT_POST publishes the post to the account. content_posting_method=UPLOAD does NOT publish: it only saves the media as a draft in the user inbox of the TikTok app, where the user must manually complete and publish it. Use DIRECT_POST unless the user explicitly asks to review or edit the post inside the TikTok app first.',
-    'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
+    'With content_posting_method=UPLOAD, TikTok ignores every setting except the title / post content, and keeps those for photo posts only - a video arrives in the inbox without its caption (the description is empty or just "#Postiz"), so the user has to type the caption in the TikTok app. Never tell the user that video_made_with_ai, privacy_level, duet, stitch, comment, autoAddMusic, brand_content_toggle or brand_organic_toggle will be applied in UPLOAD mode - they are silently discarded. If the user asks for any of those settings, tell them it requires DIRECT_POST.',
     'video_made_with_ai, duet and stitch apply to video posts only. privacy_level and autoAddMusic apply to photo posts only - the TikTok Business API has no privacy field for video posts, so those settings are discarded when the attachment is a video.',
     'The music setting attaches a commercial music library track (found via the musicSearch function) to a video or photo post, and the location setting tags the post with a location (found via the locationSearch function). Both apply only with content_posting_method=DIRECT_POST. music.audio_volume / music.video_volume (0-100, default 50) apply to video posts only. For photos, autoAddMusic=yes attaches a RANDOM commercial music library track and overrides any music selection - use autoAddMusic=no when the user wants a specific track.',
     'Media is pulled by TikTok from its URL, so the media must be uploaded to Postiz and the media domain must be a verified URL property of the TikTok Business app.',
@@ -89,6 +90,22 @@ export class TiktokBusinessProvider
     if ((firstItems?.length ?? 0) > 35) {
       return 'You can select up to 35 pictures';
     }
+
+    // TikTok fails the whole photo post when a single image is oversized, and
+    // the status only says `picture_size_check_failed` without naming it.
+    if (firstItems?.every((p) => (p?.path?.indexOf?.('mp4') ?? -1) === -1)) {
+      const dimensions = await Promise.all(
+        firstItems?.map((p) => this.getImageDimensions(p?.path)) ?? []
+      );
+      const tooBig = dimensions.findIndex(
+        (p) => Math.min(p?.width ?? 0, p?.height ?? 0) > 1080
+      );
+      if (tooBig > -1) {
+        return `Image ${tooBig + 1} is ${dimensions[tooBig]?.width}x${
+          dimensions[tooBig]?.height
+        }, TikTok allows a maximum of 1080px on the shorter side`;
+      }
+    }
     return true;
   }
 
@@ -105,6 +122,8 @@ export class TiktokBusinessProvider
       body.indexOf('access_token_invalid') > -1 ||
       body.indexOf('Access token is incorrect') > -1 ||
       body.indexOf('Access token has expired') > -1 ||
+      // code 40000 wording seen on /business/video/publish/
+      body.indexOf('The access token is invalid') > -1 ||
       body.indexOf('auth_removed') > -1
     ) {
       return {
@@ -220,7 +239,7 @@ export class TiktokBusinessProvider
       return {
         type: 'bad-body' as const,
         value:
-          'Video must be at least 360p, Picture must not exceed 1080x1920',
+          'Media size not supported by TikTok: images up to 1080px on the shorter side, videos at least 360px on both sides',
       };
     }
 
@@ -344,7 +363,7 @@ export class TiktokBusinessProvider
   }
 
   async generateAuthUrl() {
-    const state = Math.random().toString(36).substring(2);
+    const state = makeSecureId(16);
 
     return {
       url:
@@ -365,6 +384,18 @@ export class TiktokBusinessProvider
     codeVerifier: string;
     refresh?: string;
   }) {
+    // A redirect without an auth_code (consent declined or TikTok-side error)
+    // otherwise reaches the token endpoint and fails as 40002 "Please provide
+    // the auth_code", which hides the real cause in the logs.
+    if (!params.code) {
+      throw new BadBody(
+        'tiktok-business',
+        JSON.stringify({ reason: 'no auth_code in the redirect' }),
+        Buffer.from('{}'),
+        'TikTok did not return an authorization code, the authorization was not completed'
+      );
+    }
+
     const response = await (
       await fetch(`${this.baseUrl}/tt_user/oauth2/token/`, {
         method: 'POST',
@@ -424,9 +455,10 @@ export class TiktokBusinessProvider
     pendingData: { publishId: string },
     integration: Integration
   ): Promise<PendingCheckResponse> {
+    let body: string;
     let post: any;
     try {
-      post = await (
+      body = await (
         await this.fetch(
           `${this.baseUrl}/business/publish/status/?business_id=${encodeURIComponent(
             integration.internalId
@@ -441,7 +473,8 @@ export class TiktokBusinessProvider
           0,
           true
         )
-      ).json();
+      ).text();
+      post = JSON.parse(body);
     } catch (err) {
       if (err instanceof RefreshToken || err instanceof Disconnect) {
         throw err;
@@ -468,12 +501,14 @@ export class TiktokBusinessProvider
       return { status: 'pending', pendingData };
     }
 
-    const { status, post_ids, reason } = post?.data || {};
+    const { status, reason } = post?.data || {};
 
     if (status === 'SEND_TO_USER_INBOX') {
+      // the id stays 'missing' until the user publishes the draft - the
+      // share id rides in the URL fragment so resolveReleaseId can ask later
       return {
         status: 'completed',
-        releaseURL: 'https://www.tiktok.com/messages?lang=en',
+        releaseURL: `https://www.tiktok.com/messages?lang=en#${pendingData.publishId}`,
         postId: 'missing',
       };
     }
@@ -481,15 +516,15 @@ export class TiktokBusinessProvider
     if (status === 'PUBLISH_COMPLETE') {
       // post_ids can lag up to 3 minutes behind PUBLISH_COMPLETE, and never
       // shows up at all for non-public posts - fall back to the profile URL
-      // and keep the share_id (postAnalytics resolves it later).
-      const publicPostId = post_ids?.[0];
+      // and keep the share_id (resolveReleaseId fixes it later).
+      const publicPostId = this.publicPostId(body);
 
       return {
         status: 'completed',
         releaseURL: !publicPostId
           ? `https://www.tiktok.com/@${integration.profile}`
-          : `https://www.tiktok.com/@${integration.profile}/video/${publicPostId}`,
-        postId: !publicPostId ? pendingData.publishId : String(publicPostId),
+          : this.postUrl(integration, pendingData.publishId, publicPostId),
+        postId: !publicPostId ? pendingData.publishId : publicPostId,
       };
     }
 
@@ -928,6 +963,20 @@ export class TiktokBusinessProvider
     return videoListData?.data?.videos;
   }
 
+  // photo posts (p_pub_... / p_inbox_...) live under /photo/, TikTok rejects
+  // /video/ for them
+  private postUrl(integration: Integration, publishId: string, postId: string) {
+    return `https://www.tiktok.com/@${integration.profile}/${
+      publishId.indexOf('p_') === 0 ? 'photo' : 'video'
+    }/${postId}`;
+  }
+
+  // post_ids holds int64 ids that exceed Number.MAX_SAFE_INTEGER, so the id
+  // must be read from the raw body instead of the parsed JSON
+  private publicPostId(body: string) {
+    return body.match(/"post_ids"\s*:\s*\[\s*"?(\d+)"?/)?.[1];
+  }
+
   private throwIfTokenError(body: { code?: number }) {
     if (body?.code === 0) {
       return;
@@ -1098,6 +1147,82 @@ export class TiktokBusinessProvider
     }
   }
 
+  // Posts saved before post_ids became available keep their share_id
+  // (v_pub_... / p_pub_...) as releaseId - resolve it to the public post id
+  async resolveReleaseId(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration,
+    settings: any,
+    releaseURL: string
+  ) {
+    // a draft sent to the inbox (UPLOAD) is stored as 'missing' with its
+    // share id in the URL fragment
+    const draft = releaseId === 'missing';
+    const publishId = draft ? releaseURL?.split('#')[1] || '' : releaseId;
+    if (
+      publishId.indexOf('_pub_') === -1 &&
+      publishId.indexOf('_inbox_') === -1
+    ) {
+      return undefined;
+    }
+
+    // privacy_level only applies to photo posts here (and not to a draft, the
+    // user picks it in the app), and TikTok only gives a post id to posts
+    // published for public viewership
+    if (
+      !draft &&
+      publishId.indexOf('p_pub_') === 0 &&
+      ['SELF_ONLY', 'MUTUAL_FOLLOW_FRIENDS'].includes(settings?.privacy_level)
+    ) {
+      return { unavailable: true as const };
+    }
+
+    const body = await (
+      await this.fetch(
+        `${this.baseUrl}/business/publish/status/?business_id=${encodeURIComponent(
+          integration.internalId
+        )}&publish_id=${encodeURIComponent(publishId)}`,
+        {
+          method: 'GET',
+          headers: {
+            'Access-Token': accessToken,
+          },
+        }
+      )
+    ).text();
+
+    const post = JSON.parse(body);
+    this.throwIfTokenError(post);
+
+    if (draft && post?.data?.status === 'FAILED') {
+      // an inbox item TikTok confirmed and then failed - the only trace of it
+      console.log(`TikTok inbox upload ${publishId} failed later: ${body}`);
+    }
+
+    const publicPostId = this.publicPostId(body);
+    if (!publicPostId) {
+      // a draft with no public post (not published yet, or published as
+      // non-public) keeps opening the inbox instead of asking to retry
+      return draft ? undefined : { pending: true as const };
+    }
+
+    return {
+      postId: publicPostId,
+      releaseURL: this.postUrl(integration, publishId, publicPostId),
+    };
+  }
+
+  // a post connected by hand: /video/<id> also reaches photo posts, TikTok
+  // redirects it to /photo/<id>
+  async releaseUrl(
+    accessToken: string,
+    releaseId: string,
+    integration: Integration
+  ) {
+    return `https://www.tiktok.com/@${integration.profile}/video/${releaseId}`;
+  }
+
   async postAnalytics(
     integrationId: string,
     accessToken: string,
@@ -1105,33 +1230,6 @@ export class TiktokBusinessProvider
     fromDate: number
   ): Promise<AnalyticsData[]> {
     const today = dayjs().format('YYYY-MM-DD');
-
-    // Posts saved before post_ids became available keep their share_id
-    // (v_pub_url~... / p_pub_url~...) as releaseId - resolve it to the public
-    // post id first.
-    if (postId.indexOf('_pub_url') > -1) {
-      const post = await (
-        await this.fetch(
-          `${this.baseUrl}/business/publish/status/?business_id=${encodeURIComponent(
-            integrationId
-          )}&publish_id=${encodeURIComponent(postId)}`,
-          {
-            method: 'GET',
-            headers: {
-              'Access-Token': accessToken,
-            },
-          }
-        )
-      ).json();
-
-      this.throwIfTokenError(post);
-
-      if (!post?.data?.post_ids?.[0]) {
-        return [];
-      }
-
-      postId = String(post.data.post_ids[0]);
-    }
 
     try {
       const videoQueryData = await (
@@ -1195,11 +1293,14 @@ export class TiktokBusinessProvider
       }
 
       return result;
-    } catch (err) {
+    } catch (err: any) {
       if (err instanceof RefreshToken || err instanceof Disconnect) {
         throw err;
       }
-      console.error('Error fetching TikTok Business post analytics:', err);
+      console.error(
+        'Error fetching TikTok Business post analytics:',
+        err?.cause?.code || err?.message || err
+      );
       return [];
     }
   }
