@@ -98,7 +98,10 @@ async function apiRefusals() {
   const consume = await fetch(`${API}/neptive/portal-auth/magic`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: magicLink() }),
   });
-  const headers = { 'content-type': 'application/json', 'neptive-portal': consume.headers.get('neptive-portal') };
+  // dev (NOT_SECURED) hands back a header; the production build sets an httpOnly cookie instead
+  const portalHeader = consume.headers.get('neptive-portal');
+  const cookie = consume.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+  const headers = { 'content-type': 'application/json', ...(portalHeader ? { 'neptive-portal': portalHeader } : {}), ...(cookie ? { cookie } : {}) };
   const peds = await (await fetch(`${API}/neptive/portal/peds`, { headers })).json();
   const item = peds.flatMap((ped) => ped.items).find((entry) => entry.id === ITEM);
   // prefer a receded variant whose own approval is still pending: only the slot rule can refuse it

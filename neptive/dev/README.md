@@ -86,3 +86,19 @@ The existing single-post items are not touched by the seed. Loading variants by 
 - `.env` is generated, not copied from production. `DISABLE_REGISTRATION=true`, `NOT_SECURED=true`.
 - The `/agency/<customer>/ped` page content is wider than its container (calendar overflows to the right in the
   admin shell). Same on the pre-merge code, so not a merge regression.
+
+## Production-image rehearsal (before a deploy)
+
+Full procedure and results: `neptive/DEPLOY.md`. Tools (all local, never touch the server):
+
+```
+IMAGE=local/postiz-neptive:neptive-next-<sha> neptive/dev/rehearse-prod-image.sh restore|env|plain|diff|schema|up|counts|down
+node neptive/dev/tls-proxy.mjs                  # https://127.0.0.1:8443 -> the container on :4017 (self-signed, portal.neptive.com)
+node neptive/dev/prod-check.mjs                 # overlays / "Postiz" / broken images on the production build, shots in .data/shots/prod/
+PZN_BASE=https://portal.neptive.com PZN_API=https://127.0.0.1:8443/api PZN_DB=rehearsal \
+  PZN_HOST_RULES='MAP portal.neptive.com 127.0.0.1:8443' NODE_TLS_REJECT_UNAUTHORIZED=0 node neptive/dev/qa-variants.mjs
+```
+
+The image is built for `https://portal.neptive.com`; instead of a second local-URL image the browser maps that hostname to the
+local TLS proxy (`--host-resolver-rules`), so cookies, `Secure` flags and absolute media URLs behave as in production and
+nothing resolves to the real server. The rehearsal database `rehearsal` lives in `pzn-postgres` next to `postiz-db`.
