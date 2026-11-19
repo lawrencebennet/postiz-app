@@ -35,7 +35,7 @@ export const AgencyHome = () => {
     });
     setSaving(false);
     if (!response.ok) {
-      toaster.show('Could not create client', 'warning');
+      toaster.show('Impossibile creare il cliente', 'warning');
       return;
     }
     const created = await response.json();
@@ -43,7 +43,7 @@ export const AgencyHome = () => {
     setWebsite('');
     setNotes('');
     await mutate();
-    toaster.show('Client created', 'success');
+    toaster.show('Cliente creato', 'success');
     router.push(`/agency/${created.id}`);
   }, [name, website, notes, fetch, mutate, router, toaster]);
 
@@ -57,10 +57,10 @@ export const AgencyHome = () => {
         </div>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_0.8fr] gap-[16px]">
-        <NeptiveCard title="Clients">
-          {isLoading && <NeptiveEmpty>Loading…</NeptiveEmpty>}
+        <NeptiveCard title="Clienti">
+          {isLoading && <NeptiveEmpty>Caricamento…</NeptiveEmpty>}
           {!isLoading && !data?.length && (
-            <NeptiveEmpty>No clients yet. Create the first one.</NeptiveEmpty>
+            <NeptiveEmpty>Nessun cliente. Crea il primo.</NeptiveEmpty>
           )}
           <div className="flex flex-col gap-[8px]">
             {(data || []).map((client: any) => (
@@ -76,28 +76,28 @@ export const AgencyHome = () => {
                     {client.website ? ` · ${client.website}` : ''}
                   </div>
                 </div>
-                <div className="text-[12px] text-newTableText">Open</div>
+                <div className="text-[12px] text-newTableText">Apri</div>
               </button>
             ))}
           </div>
         </NeptiveCard>
-        <NeptiveCard title="New client">
+        <NeptiveCard title="Nuovo cliente">
           <div className="flex flex-col gap-[10px]">
-            <NeptiveField label="Company name">
+            <NeptiveField label="Ragione sociale">
               <input
                 className={fieldClass}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </NeptiveField>
-            <NeptiveField label="Website">
+            <NeptiveField label="Sito web">
               <input
                 className={fieldClass}
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
               />
             </NeptiveField>
-            <NeptiveField label="Internal notes">
+            <NeptiveField label="Note interne">
               <textarea
                 className={areaClass}
                 value={notes}
@@ -105,7 +105,7 @@ export const AgencyHome = () => {
               />
             </NeptiveField>
             <Button loading={saving} onClick={create}>
-              Create client
+              Crea cliente
             </Button>
           </div>
         </NeptiveCard>

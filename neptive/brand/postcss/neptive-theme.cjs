@@ -20,7 +20,7 @@ const COLOURS = {
       .map((h) => [h, '--nx-accent-rgb'])
   ),
   fc69ff: '--nx-signal-rgb',
-  d82d7e: '--nx-red-rgb',
+  d82d7e: '--nx-alt-rgb', // upstream secondary action (AI, add comment, tags): neutral raised, not red
   ff3ea2: '--nx-red-rgb',
   ebe8ff: '--nx-soft-rgb',
   cebdf2: '--nx-soft-rgb',

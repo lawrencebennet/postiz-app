@@ -20,6 +20,7 @@ await ctx.addCookies([{ name: 'i18next', value: lang, url: BASE }, ...(light ? [
 const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message.slice(0, 200)));
+page.on('console', (m) => m.type() === 'error' && errors.push('console: ' + m.text().slice(0, 200)));
 if (admin) {
   await page.goto(BASE + '/auth/login', { waitUntil: 'networkidle' });
   await page.fill('input[name="email"]', 'admin@neptive.com');
@@ -29,6 +30,8 @@ if (admin) {
 }
 await page.goto(BASE + path, { waitUntil: 'networkidle', timeout: 120000 }).catch(() => {});
 await page.waitForTimeout(2000);
+const probe = (process.argv.find((a) => a.startsWith('--probe=')) || '').split('=')[1];
+if (probe) { const [x, y] = probe.split(',').map(Number); console.log('probe', await page.evaluate(([x, y]) => { let e = document.elementFromPoint(x, y); const out = []; for (let i = 0; e && i < 6; i++, e = e.parentElement) out.push(e.tagName + '.' + String(e.className).slice(0, 80) + (e.id ? '#' + e.id : '') + (e.getAttribute('src') ? ' src=' + e.getAttribute('src').slice(0, 60) : '')); return out.join(' < '); }, [x, y])); }
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 await page.screenshot({ path: OUT + name + '.png', fullPage: full });
 const info = await page.evaluate(() => ({ title: document.title, icon: [...document.querySelectorAll('link[rel*=icon]')].map((l) => l.getAttribute('href')).join(','), brand: (document.body.innerText.match(/[^\n]*(postiz|gitroom)[^\n]*/gi) || []).slice(0, 8) }));

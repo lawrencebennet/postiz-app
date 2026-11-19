@@ -46,6 +46,7 @@ html:root .dark {
   --nx-accent-rgb: var(--nx-green-rgb);
   --nx-on-accent: rgb(var(--nx-ink-rgb));
   --nx-signal-rgb: var(--nx-pink-rgb);
+  --nx-alt-rgb: 64 67 66;
   --nx-soft-rgb: 47 51 50;
   --nx-good: rgb(var(--nx-green-rgb));
   --nx-good-bg: rgb(var(--nx-green-rgb) / 0.1);
@@ -135,6 +136,7 @@ html:root .light {
   --nx-accent-rgb: var(--nx-ink-rgb);
   --nx-on-accent: rgb(var(--nx-off-rgb));
   --nx-signal-rgb: 178 52 102;
+  --nx-alt-rgb: 72 75 74;
   --nx-soft-rgb: 233 227 215;
   --nx-good: #3c6b00;
   --nx-good-bg: rgb(var(--nx-green-rgb) / 0.45);
@@ -708,4 +710,9 @@ a[href*='youtube.com/@postiz' i] {
   background: color-mix(in srgb, var(--nx-surface) 96%, transparent);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
+}
+
+/* CopilotKit's developer inspector (kite badge) shows on localhost only; never part of the product. */
+cpk-web-inspector {
+  display: none !important;
 }

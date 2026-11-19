@@ -21,6 +21,7 @@ import {
   nextApprovalActions,
   nextPedActions,
   postPreviewText,
+  statusLabel,
   statusTone,
 } from '@gitroom/frontend/components/neptive/neptive.ui';
 import { useToaster } from '@gitroom/react/toaster/toaster';
@@ -38,16 +39,16 @@ import { PedContentDetail } from '@gitroom/frontend/components/neptive/ped-conte
 import { attachOptionsFromPosts } from '@gitroom/frontend/components/neptive/ped-variants';
 
 const TABS = [
-  { href: '', label: 'Overview' },
+  { href: '', label: 'Panoramica' },
   { href: '/ped', label: 'PED' },
-  { href: '/content', label: 'Content' },
-  { href: '/approvals', label: 'Approvals' },
-  { href: '/strategy', label: 'Strategy' },
-  { href: '/activities', label: 'Activities' },
-  { href: '/materials', label: 'Materials' },
-  { href: '/analytics', label: 'Analytics' },
-  { href: '/reports', label: 'Reports' },
-  { href: '/users', label: 'Client users' },
+  { href: '/content', label: 'Contenuti' },
+  { href: '/approvals', label: 'Approvazioni' },
+  { href: '/strategy', label: 'Strategia' },
+  { href: '/activities', label: 'Attività' },
+  { href: '/materials', label: 'Materiali' },
+  { href: '/analytics', label: 'Analisi' },
+  { href: '/reports', label: 'Report' },
+  { href: '/users', label: 'Utenti cliente' },
 ];
 
 export const AgencyClientShell = ({
@@ -62,18 +63,18 @@ export const AgencyClientShell = ({
   const base = `/agency/${customerId}`;
   return (
     <div className="flex flex-col gap-[16px] text-textColor">
-      <div className="flex items-start justify-between gap-[12px]">
-        <div>
-          <Link href="/agency" className="text-[12px] text-newTableText">
-            ← All clients
+      <div className="flex items-end justify-between gap-[12px] px-[4px] pt-[8px]">
+        <div className="flex flex-col gap-[6px]">
+          <Link href="/agency" className="nx-mono text-[11px] uppercase tracking-[0.06em] text-newTableText hover:text-textColor">
+            ← Tutti i clienti
           </Link>
-          <div className="text-[22px] font-[700]">{client?.name || 'Client'}</div>
+          <div className="nx-display text-[32px] leading-[1] font-[600] tracking-[-0.02em]">{client?.name || 'Cliente'}</div>
         </div>
         <Link
           href="/launches"
           className="text-[13px] px-[12px] h-[40px] flex items-center rounded-[8px] bg-newBtnSimple"
         >
-          Open Neptive calendar
+          Apri il calendario
         </Link>
       </div>
       <div className="flex flex-wrap gap-[6px]">
@@ -121,49 +122,49 @@ const OverviewPanel = ({ customerId }: { customerId: string }) => {
   return (
     <div className="flex flex-col gap-[12px]">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-[12px]">
-      <NeptiveCard title="Current PED">
+      <NeptiveCard title="PED in corso">
         {data?.currentPed ? (
           <div>
             <div className="font-[600]">{data.currentPed.name}</div>
             <NeptiveBadge tone={statusTone(data.currentPed.status)}>
-              {data.currentPed.status}
+              {statusLabel(data.currentPed.status)}
             </NeptiveBadge>
           </div>
         ) : (
-          <NeptiveEmpty>No editorial plan yet</NeptiveEmpty>
+          <NeptiveEmpty>Nessun piano editoriale</NeptiveEmpty>
         )}
       </NeptiveCard>
-      <NeptiveCard title="Awaiting client approval">
+      <NeptiveCard title="In attesa del cliente">
         <div className="text-[28px] font-[700]">
           {data?.awaitingApproval ?? 0}
         </div>
       </NeptiveCard>
-      <NeptiveCard title="Latest report">
+      <NeptiveCard title="Ultimo report">
         {data?.latestReport ? (
           <div>{data.latestReport.title}</div>
         ) : (
-          <NeptiveEmpty>No report yet</NeptiveEmpty>
+          <NeptiveEmpty>Nessun report</NeptiveEmpty>
         )}
       </NeptiveCard>
-      <NeptiveCard title="Upcoming in Neptive">
+      <NeptiveCard title="In uscita">
         {upcoming.slice(0, 6).map((item: any) => (
           <div key={item.id} className="text-[13px] py-[4px] border-b border-newTableBorder last:border-0">
-            <div className="line-clamp-2">{postPreviewText(item.content) || 'Scheduled post'}</div>
+            <div className="line-clamp-2">{postPreviewText(item.content) || 'Post programmato'}</div>
             <div className="text-[11px] text-newTableText">
               {item.integration?.providerIdentifier} · {formatWhen(item.publishDate)}
             </div>
           </div>
         ))}
-        {!upcoming.length && <NeptiveEmpty>Nothing queued</NeptiveEmpty>}
+        {!upcoming.length && <NeptiveEmpty>Niente in coda</NeptiveEmpty>}
       </NeptiveCard>
-      <NeptiveCard title="Recent work" className="md:col-span-2">
+      <NeptiveCard title="Lavoro recente" className="md:col-span-2">
         {(data?.recentActivities || []).slice(0, 6).map((item: any) => (
           <div key={item.id} className="text-[13px] py-[4px]">
             {item.title}
           </div>
         ))}
         {!data?.recentActivities?.length && (
-          <NeptiveEmpty>No activities logged</NeptiveEmpty>
+          <NeptiveEmpty>Nessuna attività registrata</NeptiveEmpty>
         )}
       </NeptiveCard>
       </div>
@@ -260,7 +261,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
       body: JSON.stringify({ name, periodStart, periodEnd, objectives }),
     });
     if (!response.ok) {
-      toaster.show('Could not create PED', 'warning');
+      toaster.show('Impossibile creare il PED', 'warning');
       return;
     }
     setName('');
@@ -283,7 +284,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
         { method: 'POST', body: JSON.stringify({ status, comment }) }
       );
       if (!response.ok) {
-        toaster.show('That step is not available yet', 'warning');
+        toaster.show('Passaggio non ancora disponibile', 'warning');
         return;
       }
       await mutate();
@@ -308,7 +309,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
         }
       );
       if (!response.ok) {
-        toaster.show('Could not add item', 'warning');
+        toaster.show('Impossibile aggiungere il contenuto', 'warning');
         return;
       }
       setItemDrafts((current) => ({ ...current, [id]: '' }));
@@ -343,7 +344,7 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
                   <div className="text-[22px] font-[700]">{ped.name}</div>
                   <div className="text-[12px] text-newTableText">{ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}</div>
                 </div>
-                <NeptiveBadge tone={statusTone(ped.status)}>{ped.status}</NeptiveBadge>
+                <NeptiveBadge tone={statusTone(ped.status)}>{statusLabel(ped.status)}</NeptiveBadge>
               </div>
               {ped.objectives && <div className="text-[13px] mt-[10px] whitespace-pre-wrap">{ped.objectives}</div>}
               <div className="flex flex-wrap gap-[6px] mt-[12px]">
@@ -386,22 +387,22 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
           </div>
         );
       })}
-      {!data?.length && <NeptiveCard title="Editorial plans"><NeptiveEmpty>Nessun PED</NeptiveEmpty></NeptiveCard>}
-      <NeptiveCard title="New PED">
+      {!data?.length && <NeptiveCard title="Piani editoriali"><NeptiveEmpty>Nessun PED</NeptiveEmpty></NeptiveCard>}
+      <NeptiveCard title="Nuovo PED">
         <div className="flex flex-col gap-[8px]">
-          <NeptiveField label="Name">
+          <NeptiveField label="Nome">
             <input className={fieldClass} value={name} onChange={(e) => setName(e.target.value)} />
           </NeptiveField>
-          <NeptiveField label="Start">
+          <NeptiveField label="Inizio">
             <input className={fieldClass} type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
           </NeptiveField>
-          <NeptiveField label="End">
+          <NeptiveField label="Fine">
             <input className={fieldClass} type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
           </NeptiveField>
-          <NeptiveField label="Objectives">
+          <NeptiveField label="Obiettivi">
             <textarea className={areaClass} value={objectives} onChange={(e) => setObjectives(e.target.value)} />
           </NeptiveField>
-          <Button onClick={create}>Create PED</Button>
+          <Button onClick={create}>Crea PED</Button>
         </div>
       </NeptiveCard>
       <PedContentDetail
@@ -430,7 +431,7 @@ const ContentPanel = ({ customerId }: { customerId: string }) => {
   const { data } = useNeptiveAgencyList(customerId, 'posts?state=all');
   const posts = data?.posts || [];
   return (
-    <NeptiveCard title="Client posts (from Neptive)">
+    <NeptiveCard title="Post del cliente (dal calendario)">
       <div className="text-[12px] text-newTableText mb-[8px]">
         Publishing state is owned by Neptive. Use Approvals for client sign-off.
       </div>
@@ -438,16 +439,16 @@ const ContentPanel = ({ customerId }: { customerId: string }) => {
         <div key={post.id} className="flex justify-between py-[8px] border-b border-newTableBorder gap-[12px]">
           <div>
             <div className="text-[13px] line-clamp-2">
-              {postPreviewText(post.content) || 'Untitled post'}
+              {postPreviewText(post.content) || 'Post senza titolo'}
             </div>
             <div className="text-[11px] text-newTableText">
               {post.integration?.providerIdentifier} · {formatWhen(post.publishDate)}
             </div>
           </div>
-          <NeptiveBadge tone={statusTone(post.state)}>{post.state}</NeptiveBadge>
+          <NeptiveBadge tone={statusTone(post.state)}>{statusLabel(post.state)}</NeptiveBadge>
         </div>
       ))}
-      {!posts.length && <NeptiveEmpty>No posts for this client</NeptiveEmpty>}
+      {!posts.length && <NeptiveEmpty>Nessun post per questo cliente</NeptiveEmpty>}
     </NeptiveCard>
   );
 };
@@ -483,7 +484,7 @@ const ApprovalsPanel = ({ customerId }: { customerId: string }) => {
       }
     );
     if (!response.ok) {
-      toaster.show('Could not start approval', 'warning');
+      toaster.show('Impossibile avviare l’approvazione', 'warning');
       return;
     }
     setPostGroup('');
@@ -494,7 +495,7 @@ const ApprovalsPanel = ({ customerId }: { customerId: string }) => {
     async (id: string, status: string, needsComment?: boolean) => {
       let comment: string | undefined;
       if (needsComment) {
-        comment = window.prompt('Comment (required)') || '';
+        comment = window.prompt('Commento (obbligatorio)') || '';
         if (!comment.trim()) {
           toaster.show('A comment is required', 'warning');
           return;
@@ -505,7 +506,7 @@ const ApprovalsPanel = ({ customerId }: { customerId: string }) => {
         { method: 'POST', body: JSON.stringify({ status, comment }) }
       );
       if (!response.ok) {
-        toaster.show('Transition failed', 'warning');
+        toaster.show('Passaggio non riuscito', 'warning');
         return;
       }
       await mutate();
@@ -515,31 +516,31 @@ const ApprovalsPanel = ({ customerId }: { customerId: string }) => {
 
   return (
     <div className="flex flex-col gap-[12px]">
-      <NeptiveCard title="Submit a draft group">
+      <NeptiveCard title="Invia una bozza in approvazione">
         <div className="flex gap-[8px]">
           <select
             className={fieldClass}
             value={postGroup}
             onChange={(e) => setPostGroup(e.target.value)}
           >
-            <option value="">Select Neptive post</option>
+            <option value="">Scegli un post</option>
             {groups.map((post: any) => (
               <option key={post.group} value={post.group}>
-                {(postPreviewText(post.content) || 'Untitled').slice(0, 80)} · {post.state}
+                {(postPreviewText(post.content) || 'Senza titolo').slice(0, 80)} · {post.state}
               </option>
             ))}
           </select>
-          <Button onClick={create}>Create approval</Button>
+          <Button onClick={create}>Crea approvazione</Button>
         </div>
       </NeptiveCard>
-      <NeptiveCard title="Approvals">
+      <NeptiveCard title="Approvazioni">
         {(data || []).map((row: any) => (
           <div key={row.id} className="py-[12px] border-b border-newTableBorder">
             <div className="flex items-center gap-[8px] flex-wrap">
               <div className="font-[600]">
-                {row.title || row.post?.text || 'Content for approval'}
+                {row.title || row.post?.text || 'Contenuto da approvare'}
               </div>
-              <NeptiveBadge tone={statusTone(row.status)}>{row.status}</NeptiveBadge>
+              <NeptiveBadge tone={statusTone(row.status)}>{statusLabel(row.status)}</NeptiveBadge>
             </div>
             {row.post?.text && row.title && row.title !== row.post.text && (
               <div className="text-[13px] mt-[4px] line-clamp-2">{row.post.text}</div>
@@ -569,7 +570,7 @@ const ApprovalsPanel = ({ customerId }: { customerId: string }) => {
             </div>
           </div>
         ))}
-        {!data?.length && <NeptiveEmpty>No approvals</NeptiveEmpty>}
+        {!data?.length && <NeptiveEmpty>Nessuna approvazione</NeptiveEmpty>}
       </NeptiveCard>
     </div>
   );
@@ -593,7 +594,7 @@ const StrategyPanel = ({ customerId }: { customerId: string }) => {
       body: JSON.stringify({ kind, title, body, visibility }),
     });
     if (!response.ok) {
-      toaster.show('Could not save strategy entry', 'warning');
+      toaster.show('Impossibile salvare la voce di strategia', 'warning');
       return;
     }
     setTitle('');
@@ -613,35 +614,35 @@ const StrategyPanel = ({ customerId }: { customerId: string }) => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[12px]">
-      <NeptiveCard title="Strategy">
+      <NeptiveCard title="Strategia">
         {(data || []).map((entry: any) => (
           <div key={entry.id} className="py-[10px] border-b border-newTableBorder">
             <div className="flex items-center justify-between gap-[8px]">
               <div className="text-[11px] text-newTableText">{entry.kind} · {entry.visibility}</div>
               <button className="text-[11px] text-newTableText" onClick={() => remove(entry.id)}>
-                Remove
+                Rimuovi
               </button>
             </div>
             <div className="font-[600]">{entry.title}</div>
             <div className="text-[13px] whitespace-pre-wrap">{entry.body}</div>
           </div>
         ))}
-        {!data?.length && <NeptiveEmpty>No strategy entries</NeptiveEmpty>}
+        {!data?.length && <NeptiveEmpty>Nessuna voce di strategia</NeptiveEmpty>}
       </NeptiveCard>
-      <NeptiveCard title="Add entry">
+      <NeptiveCard title="Aggiungi voce">
         <div className="flex flex-col gap-[8px]">
           <select className={fieldClass} value={kind} onChange={(e) => setKind(e.target.value)}>
             {['OBJECTIVE','AUDIENCE','POSITIONING','PILLAR','TONE','PLATFORM','PRIORITY','EXPERIMENT','CAMPAIGN','KPI','NOTE'].map((k) => (
               <option key={k}>{k}</option>
             ))}
           </select>
-          <input className={fieldClass} placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <textarea className={areaClass} placeholder="Body" value={body} onChange={(e) => setBody(e.target.value)} />
+          <input className={fieldClass} placeholder="Titolo" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <textarea className={areaClass} placeholder="Testo" value={body} onChange={(e) => setBody(e.target.value)} />
           <select className={fieldClass} value={visibility} onChange={(e) => setVisibility(e.target.value)}>
-            <option value="CLIENT_VISIBLE">Client visible</option>
-            <option value="INTERNAL">Internal only</option>
+            <option value="CLIENT_VISIBLE">Visibile al cliente</option>
+            <option value="INTERNAL">Solo interno</option>
           </select>
-          <Button onClick={create}>Save</Button>
+          <Button onClick={create}>Salva</Button>
         </div>
       </NeptiveCard>
     </div>
@@ -666,7 +667,7 @@ const ActivitiesPanel = ({ customerId }: { customerId: string }) => {
       body: JSON.stringify({ type, title, body, visibility }),
     });
     if (!response.ok) {
-      toaster.show('Could not log activity', 'warning');
+      toaster.show('Impossibile registrare l’attività', 'warning');
       return;
     }
     setTitle('');
@@ -676,7 +677,7 @@ const ActivitiesPanel = ({ customerId }: { customerId: string }) => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[12px]">
-      <NeptiveCard title="Work performed">
+      <NeptiveCard title="Lavoro svolto">
         {(data || []).map((item: any) => (
           <div key={item.id} className="py-[8px] border-b border-newTableBorder">
             <div className="text-[11px] text-newTableText">{item.type} · {item.source} · {item.visibility}</div>
@@ -685,22 +686,22 @@ const ActivitiesPanel = ({ customerId }: { customerId: string }) => {
             <div className="text-[11px] text-newTableText">{formatWhen(item.occurredAt)}</div>
           </div>
         ))}
-        {!data?.length && <NeptiveEmpty>No activities</NeptiveEmpty>}
+        {!data?.length && <NeptiveEmpty>Nessuna attività</NeptiveEmpty>}
       </NeptiveCard>
-      <NeptiveCard title="Log activity">
+      <NeptiveCard title="Registra attività">
         <div className="flex flex-col gap-[8px]">
           <select className={fieldClass} value={type} onChange={(e) => setType(e.target.value)}>
             {['PROFILE_OPTIMIZATION','COMPETITOR_ANALYSIS','CAMPAIGN_ADJUSTMENT','MEETING','CREATIVE_PRODUCTION','STRATEGY_UPDATE','REPORT_PREPARATION','WEBSITE_SOCIAL_INTERVENTION','OTHER'].map((k) => (
               <option key={k}>{k}</option>
             ))}
           </select>
-          <input className={fieldClass} placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input className={fieldClass} placeholder="Titolo" value={title} onChange={(e) => setTitle(e.target.value)} />
           <textarea className={areaClass} value={body} onChange={(e) => setBody(e.target.value)} />
           <select className={fieldClass} value={visibility} onChange={(e) => setVisibility(e.target.value)}>
-            <option value="CLIENT_VISIBLE">Client visible</option>
-            <option value="INTERNAL">Internal only</option>
+            <option value="CLIENT_VISIBLE">Visibile al cliente</option>
+            <option value="INTERNAL">Solo interno</option>
           </select>
-          <Button onClick={create}>Log work</Button>
+          <Button onClick={create}>Registra</Button>
         </div>
       </NeptiveCard>
     </div>
@@ -725,7 +726,7 @@ const MaterialsPanel = ({ customerId }: { customerId: string }) => {
       body: JSON.stringify({ title, kind, filePath, visibility }),
     });
     if (!response.ok) {
-      toaster.show('Could not save material', 'warning');
+      toaster.show('Impossibile salvare il materiale', 'warning');
       return;
     }
     setTitle('');
@@ -745,39 +746,39 @@ const MaterialsPanel = ({ customerId }: { customerId: string }) => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[12px]">
-      <NeptiveCard title="Materials">
+      <NeptiveCard title="Materiali">
         {(data || []).map((item: any) => (
           <div key={item.id} className="py-[8px] border-b border-newTableBorder">
             <div className="flex items-center justify-between gap-[8px]">
               <div className="font-[600]">{item.title}</div>
               <button className="text-[11px] text-newTableText" onClick={() => remove(item.id)}>
-                Remove
+                Rimuovi
               </button>
             </div>
             <div className="text-[12px] text-newTableText">{item.kind} · {item.visibility}</div>
             {item.filePath && (
               <a className="text-[12px] underline" href={item.filePath} target="_blank" rel="noreferrer">
-                Open
+                Apri
               </a>
             )}
           </div>
         ))}
-        {!data?.length && <NeptiveEmpty>No materials</NeptiveEmpty>}
+        {!data?.length && <NeptiveEmpty>Nessun materiale</NeptiveEmpty>}
       </NeptiveCard>
-      <NeptiveCard title="Add material">
+      <NeptiveCard title="Aggiungi materiale">
         <div className="flex flex-col gap-[8px]">
-          <input className={fieldClass} placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input className={fieldClass} placeholder="Titolo" value={title} onChange={(e) => setTitle(e.target.value)} />
           <select className={fieldClass} value={kind} onChange={(e) => setKind(e.target.value)}>
             {['BRAND_GUIDELINES','REPORT_PDF','STRATEGY_DOCUMENT','RAW_PHOTO','CLIENT_MATERIAL','CAMPAIGN_ASSET','DELIVERABLE'].map((k) => (
               <option key={k}>{k}</option>
             ))}
           </select>
-          <input className={fieldClass} placeholder="File URL or Neptive media path" value={filePath} onChange={(e) => setFilePath(e.target.value)} />
+          <input className={fieldClass} placeholder="URL del file o percorso media" value={filePath} onChange={(e) => setFilePath(e.target.value)} />
           <select className={fieldClass} value={visibility} onChange={(e) => setVisibility(e.target.value)}>
-            <option value="CLIENT_VISIBLE">Client visible</option>
-            <option value="INTERNAL">Internal only</option>
+            <option value="CLIENT_VISIBLE">Visibile al cliente</option>
+            <option value="INTERNAL">Solo interno</option>
           </select>
-          <Button onClick={create}>Save</Button>
+          <Button onClick={create}>Salva</Button>
         </div>
       </NeptiveCard>
     </div>
@@ -787,16 +788,16 @@ const MaterialsPanel = ({ customerId }: { customerId: string }) => {
 const AnalyticsPanel = ({ customerId }: { customerId: string }) => {
   const { data } = useNeptiveAgencyList(customerId, 'analytics?date=30');
   return (
-    <NeptiveCard title="Channel analytics (Neptive collectors)">
+    <NeptiveCard title="Analisi dei canali">
       {(data || []).map((row: any) => (
         <div key={row.integrationId} className="py-[8px] border-b border-newTableBorder">
           <div className="font-[600]">{row.name} · {row.provider}</div>
           <div className="text-[12px] text-newTableText">
-            {Array.isArray(row.data) ? `${row.data.length} series` : 'No data'}
+            {Array.isArray(row.data) ? `${row.data.length} series` : 'Nessun dato'}
           </div>
         </div>
       ))}
-      {!data?.length && <NeptiveEmpty>No connected channels</NeptiveEmpty>}
+      {!data?.length && <NeptiveEmpty>Nessun canale collegato</NeptiveEmpty>}
     </NeptiveCard>
   );
 };
@@ -811,7 +812,7 @@ const ReportsPanel = ({ customerId }: { customerId: string }) => {
 
   const generate = useCallback(async () => {
     if (!periodStart || !periodEnd) {
-      toaster.show('Choose a start and end date', 'warning');
+      toaster.show('Scegli data di inizio e di fine', 'warning');
       return;
     }
     const response = await fetch(`/neptive/agency/clients/${customerId}/reports`, {
@@ -819,7 +820,7 @@ const ReportsPanel = ({ customerId }: { customerId: string }) => {
       body: JSON.stringify({ periodStart, periodEnd, narrative }),
     });
     if (!response.ok) {
-      toaster.show('Could not generate report', 'warning');
+      toaster.show('Impossibile generare il report', 'warning');
       return;
     }
     setNarrative('');
@@ -828,14 +829,14 @@ const ReportsPanel = ({ customerId }: { customerId: string }) => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[12px]">
-      <NeptiveCard title="Reports">
+      <NeptiveCard title="Report">
         {(data || []).map((report: any) => {
           const snapshot = report.snapshot || {};
           return (
             <div key={report.id} className="py-[10px] border-b border-newTableBorder">
               <div className="font-[600]">{report.title}</div>
               <div className="flex items-center gap-[8px] mt-[4px]">
-                <NeptiveBadge tone={statusTone(report.status)}>{report.status}</NeptiveBadge>
+                <NeptiveBadge tone={statusTone(report.status)}>{statusLabel(report.status)}</NeptiveBadge>
                 <span className="text-[12px] text-newTableText">
                   {report.periodStart?.slice(0, 10)} → {report.periodEnd?.slice(0, 10)}
                 </span>
@@ -861,14 +862,14 @@ const ReportsPanel = ({ customerId }: { customerId: string }) => {
             </div>
           );
         })}
-        {!data?.length && <NeptiveEmpty>No reports</NeptiveEmpty>}
+        {!data?.length && <NeptiveEmpty>Nessun report</NeptiveEmpty>}
       </NeptiveCard>
-      <NeptiveCard title="Generate monthly summary">
+      <NeptiveCard title="Genera il riepilogo mensile">
         <div className="flex flex-col gap-[8px]">
           <input className={fieldClass} type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} />
           <input className={fieldClass} type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
-          <textarea className={areaClass} placeholder="Narrative" value={narrative} onChange={(e) => setNarrative(e.target.value)} />
-          <Button onClick={generate}>Publish report</Button>
+          <textarea className={areaClass} placeholder="Commento" value={narrative} onChange={(e) => setNarrative(e.target.value)} />
+          <Button onClick={generate}>Pubblica report</Button>
         </div>
       </NeptiveCard>
     </div>
@@ -891,12 +892,12 @@ const UsersPanel = ({ customerId }: { customerId: string }) => {
     const body = await response.json();
     await mutate();
     if (!response.ok) {
-      toaster.show('Could not create invite', 'warning');
+      toaster.show('Impossibile creare l’invito', 'warning');
       return;
     }
     if (body.url) {
       setInviteUrl(body.url);
-      toaster.show('Invite created', 'success');
+      toaster.show('Invito creato', 'success');
       try {
         await navigator.clipboard.writeText(body.url);
       } catch {}
@@ -907,20 +908,20 @@ const UsersPanel = ({ customerId }: { customerId: string }) => {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[12px]">
-      <NeptiveCard title="Client users">
+      <NeptiveCard title="Utenti cliente">
         {(data?.users || []).map((user: any) => (
           <div key={user.id} className="py-[8px] border-b border-newTableBorder">
             <div className="font-[600]">{user.name}</div>
             <div className="text-[12px] text-newTableText">{user.email} · {user.role}</div>
           </div>
         ))}
-        {!data?.users?.length && <NeptiveEmpty>No client users</NeptiveEmpty>}
+        {!data?.users?.length && <NeptiveEmpty>Nessun utente cliente</NeptiveEmpty>}
       </NeptiveCard>
-      <NeptiveCard title="Invite">
+      <NeptiveCard title="Invita">
         <div className="flex flex-col gap-[8px]">
-          <input className={fieldClass} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+          <input className={fieldClass} placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} />
           <input className={fieldClass} placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Button onClick={invite}>Send magic link</Button>
+          <Button onClick={invite}>Invia link di accesso</Button>
           {inviteUrl && (
             <div className="text-[12px] break-all text-newTableText">
               {inviteUrl}
