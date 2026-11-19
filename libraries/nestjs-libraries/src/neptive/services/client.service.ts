@@ -211,8 +211,8 @@ export class NeptiveClientService {
     try {
       await this.email.sendEmail(
         user.email,
-        'Your Neptive client portal link',
-        `Click <a href="${url}">here</a> to open your client portal. This link expires in 30 days.`,
+        'Il tuo accesso al portale clienti Neptive',
+        `Da qui trovi il piano editoriale, le anteprime dei post e le approvazioni che ti chiediamo.<br /><br /><a href="${url}">Apri il portale clienti</a><br /><br />Il link è personale, vale una sola volta e scade tra 30 giorni.`,
         'top'
       );
     } catch {}

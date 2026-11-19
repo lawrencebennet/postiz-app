@@ -7,6 +7,7 @@ import { SesProvider } from '@gitroom/nestjs-libraries/emails/ses.provider';
 import { TemporalService } from 'nestjs-temporal-core';
 import { timer } from '@gitroom/helpers/utils/timer';
 import { randomUUID } from 'crypto';
+import { neptiveEmail } from '@gitroom/nestjs-libraries/neptive/brand/brand';
 
 @Injectable()
 export class EmailService {
@@ -136,14 +137,17 @@ export class EmailService {
     </div>
     `;
 
+    // Neptive: branded subject, body, sender name and layout (libraries/nestjs-libraries/src/neptive/brand)
+    const neptive = neptiveEmail({ subject, html, settingsUrl: process.env.FRONTEND_URL ? settingsUrl : undefined, fromName: process.env.EMAIL_FROM_NAME });
+
     let lastErr: unknown;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const sends = await this.emailService.sendEmail(
           to,
-          subject,
-          modifiedHtml,
-          process.env.EMAIL_FROM_NAME,
+          neptive.subject,
+          neptive.html,
+          neptive.fromName,
           process.env.EMAIL_FROM_ADDRESS,
           replyTo,
           headers

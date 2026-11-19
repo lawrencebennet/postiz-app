@@ -58,6 +58,22 @@ export function withNeptiveBrand(config) {
       });
       return out;
     },
+    // Signed-out visitors land on /auth (upstream's registration page). With registration disabled that page
+    // only says so: send them to the sign-in form instead. OAuth (?provider=) keeps /auth; team invites
+    // (?org=) keep their query, which the proxy reads on /auth/login exactly as on /auth.
+    async redirects() {
+      const original = config.redirects ? await config.redirects() : [];
+      if (process.env.DISABLE_REGISTRATION !== 'true') return original;
+      return [
+        {
+          source: '/auth',
+          missing: [{ type: 'query', key: 'provider' }],
+          destination: '/auth/login',
+          permanent: false,
+        },
+        ...original,
+      ];
+    },
     async rewrites() {
       const original = upstreamRewrites ? await upstreamRewrites() : [];
       const beforeFiles = Object.entries(brand.assets).map(([source, destination]) => ({ source, destination }));
