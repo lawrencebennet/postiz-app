@@ -3,42 +3,79 @@
 import { FC } from 'react';
 import { NeptiveBadge, statusTone } from '@gitroom/frontend/components/neptive/neptive.ui';
 
+export type PedContent = {
+  postGroup: string;
+  title: string;
+  caption: string;
+  platform: string;
+  platforms: string[];
+  channel: string;
+  scheduledAt: string;
+  contentType: string;
+  profileImage?: string | null;
+  media: Array<{ id: string; path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
+  publishingState: string;
+  variants?: Array<{
+    postId: string;
+    platform: string;
+    channel: string;
+    caption: string;
+    scheduledAt: string;
+    contentType: string;
+    profileImage?: string | null;
+    media: Array<{ id: string; path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
+    publishingState: string;
+  }>;
+};
+
+export type PedApproval = {
+  id: string;
+  status: string;
+  approvedAt?: string | null;
+  comments?: Array<{
+    id: string;
+    authorName: string;
+    authorType?: string;
+    visibility?: string;
+    body: string;
+    createdAt: string;
+  }>;
+  actions?: Array<{ action: string; actorType: string; comment?: string | null; createdAt: string }>;
+  requestedChangesNote?: string | null;
+};
+
+/** One alternative (A, B, C...) for a slot; see NeptiveVariantService.projectItem. */
+export type PedVariant = {
+  id: string;
+  implicit: boolean;
+  label: string;
+  position: number;
+  postGroup: string;
+  content: PedContent | null;
+  linkStatus: string;
+  approval: PedApproval | null;
+  state: string;
+  client?: { canDecide: boolean; canComment: boolean };
+  agency?: { canRemove: boolean; canSendToClient: boolean };
+};
+
 export type PedCalendarItem = {
   id: string;
   title: string;
   notes?: string | null;
   position: number;
   linkStatus?: string;
-  content?: {
-    postGroup: string;
-    title: string;
-    caption: string;
-    platform: string;
-    platforms: string[];
-    channel: string;
-    scheduledAt: string;
-    contentType: string;
-    profileImage?: string | null;
-    media: Array<{ id: string; path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
-    publishingState: string;
-    variants?: Array<{
-      postId: string;
-      platform: string;
-      channel: string;
-      caption: string;
-      scheduledAt: string;
-      contentType: string;
-      profileImage?: string | null;
-      media: Array<{ id: string; path: string; thumbnail?: string; type: string; order: number; alt?: string }>;
-      publishingState: string;
-    }>;
-  } | null;
-  approval?: {
-    id: string;
-    status: string;
-    comments?: Array<{ id: string; authorName: string; body: string; createdAt: string }>;
-    requestedChangesNote?: string | null;
-  } | null;
+  /** lead variant (confirmed one, else the first): what calendar cards show */
+  content?: PedContent | null;
+  approval?: PedApproval | null;
+  slot?: {
+    mode: 'SINGLE' | 'VARIANTS';
+    state: 'OPEN' | 'CONFIRMED';
+    confirmedVariantId: string | null;
+    confirmedAt?: string | null;
+  };
+  variants?: PedVariant[];
+  removedVariants?: Array<{ id: string; label: string; postGroup: string; removedAt: string }>;
 };
 
 const typeLabels: Record<string, string> = {
@@ -73,6 +110,10 @@ export const PedContentCard: FC<{
   const platform = content?.platform || '';
   const approvalStatus = item.approval?.status || 'NOT_SUBMITTED';
   const publishingState = content?.publishingState || 'UNLINKED';
+  const variantCount = item.variants?.length || 0;
+  const confirmed = item.variants?.find(
+    (variant) => variant.id === item.slot?.confirmedVariantId
+  );
 
   return (
     <button
@@ -113,9 +154,15 @@ export const PedContentCard: FC<{
           {content?.contentType === 'CAROUSEL' && (
             <NeptiveBadge>{content.media.length} slide</NeptiveBadge>
           )}
-          <NeptiveBadge tone={statusTone(approvalStatus)}>
-            {approvalStatus === 'NOT_SUBMITTED' ? 'Da collegare' : approvalStatus}
-          </NeptiveBadge>
+          {variantCount > 1 ? (
+            <NeptiveBadge tone={confirmed ? 'good' : 'warn'}>
+              {confirmed ? `Variante ${confirmed.label} confermata` : `${variantCount} varianti`}
+            </NeptiveBadge>
+          ) : (
+            <NeptiveBadge tone={statusTone(approvalStatus)}>
+              {approvalStatus === 'NOT_SUBMITTED' ? 'Da collegare' : approvalStatus}
+            </NeptiveBadge>
+          )}
         </div>
         <div className="text-[11px] text-newTableText line-clamp-2">
           {content?.caption || (item.linkStatus === 'MISSING' ? 'Collegamento Neptive non disponibile' : 'Collega un contenuto Neptive')}

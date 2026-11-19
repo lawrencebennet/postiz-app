@@ -35,6 +35,7 @@ import {
   PedContentCard,
 } from '@gitroom/frontend/components/neptive/ped-content-card';
 import { PedContentDetail } from '@gitroom/frontend/components/neptive/ped-content-detail';
+import { attachOptionsFromPosts } from '@gitroom/frontend/components/neptive/ped-variants';
 
 const TABS = [
   { href: '', label: 'Overview' },
@@ -238,7 +239,12 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
   const [objectives, setObjectives] = useState('');
   const [itemDrafts, setItemDrafts] = useState<Record<string, string>>({});
   const [itemGroups, setItemGroups] = useState<Record<string, string>>({});
-  const [selectedItem, setSelectedItem] = useState<PedCalendarItem | null>(null);
+  // keep only ids: the open slot is re-read from fresh data after every change
+  const [selected, setSelected] = useState<{ planId: string; itemId: string } | null>(null);
+  const selectedPed = (data || []).find((ped: any) => ped.id === selected?.planId);
+  const selectedItem: PedCalendarItem | null =
+    (selectedPed?.items || []).find((item: any) => item.id === selected?.itemId) || null;
+  const attachOptions = attachOptionsFromPosts(postsData?.posts || []);
 
   const postGroups = Array.from(
     new Map(
@@ -353,11 +359,12 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
                 ))}
               </div>
             </NeptiveCard>
-            <PedCalendar items={items} periodStart={ped.periodStart} periodEnd={ped.periodEnd} onOpen={setSelectedItem} />
-            <PedContentList items={items} onOpen={setSelectedItem} />
+            <PedCalendar items={items} periodStart={ped.periodStart} periodEnd={ped.periodEnd} onOpen={(item) => setSelected({ planId: ped.id, itemId: item.id })} />
+            <PedContentList items={items} onOpen={(item) => setSelected({ planId: ped.id, itemId: item.id })} />
             <NeptiveCard title="Contenuti collegati">
+              <div className="text-[12px] text-newTableText mb-[8px]">Apri un contenuto per vedere le sue varianti (A, B, C…), le decisioni del cliente e per aggiungere, rinominare, riordinare, rimuovere varianti o riaprire una scelta.</div>
               <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-[8px]">
-                {items.map((item) => <PedContentCard key={item.id} item={item} onOpen={setSelectedItem} />)}
+                {items.map((item) => <PedContentCard key={item.id} item={item} onOpen={(entry) => setSelected({ planId: ped.id, itemId: entry.id })} />)}
               </div>
               {!items.length && <NeptiveEmpty>Aggiungi il primo contenuto Neptive a questo PED.</NeptiveEmpty>}
             </NeptiveCard>
@@ -397,7 +404,24 @@ const PedPanel = ({ customerId }: { customerId: string }) => {
           <Button onClick={create}>Create PED</Button>
         </div>
       </NeptiveCard>
-      <PedContentDetail item={selectedItem} mode="agency" previewIdentity={client?.previewIdentity} onClose={() => setSelectedItem(null)} />
+      <PedContentDetail
+        item={selectedItem}
+        mode="agency"
+        previewIdentity={client?.previewIdentity}
+        onClose={() => setSelected(null)}
+        onChanged={mutate}
+        agency={
+          selected
+            ? {
+                customerId,
+                planId: selected.planId,
+                attachOptions,
+                onChanged: mutate,
+                notify: (message, kind) => toaster.show(message, kind || 'success'),
+              }
+            : undefined
+        }
+      />
     </div>
   );
 };

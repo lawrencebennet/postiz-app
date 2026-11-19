@@ -1,97 +1,46 @@
 'use client';
 
-import { FC, useEffect, useState } from 'react';
-import { Button } from '@gitroom/react/form/button';
-import { NeptiveBadge, NeptiveCard, areaClass, formatWhen, statusTone } from '@gitroom/frontend/components/neptive/neptive.ui';
-import { PedCalendarItem, contentTypeLabel } from '@gitroom/frontend/components/neptive/ped-content-card';
-import { PlatformPreviewSwitcher } from '@gitroom/frontend/components/neptive/preview/preview';
+import { FC, useEffect } from 'react';
+import { PedCalendarItem } from '@gitroom/frontend/components/neptive/ped-content-card';
+import {
+  AgencySlotApi,
+  PedSlotCard,
+} from '@gitroom/frontend/components/neptive/ped-variants';
 
+/** Modal around one PED slot (all its variants). Used by the agency PED page. */
 export const PedContentDetail: FC<{
   item: PedCalendarItem | null;
   mode: 'agency' | 'client';
   onClose: () => void;
-  onApprove?: () => void;
-  onRequestChanges?: (comment: string) => void;
-  busy?: boolean;
+  onChanged?: () => Promise<unknown> | void;
+  agency?: AgencySlotApi;
   previewIdentity?: unknown;
-}> = ({ item, mode, onClose, onApprove, onRequestChanges, busy, previewIdentity }) => {
-  const [comment, setComment] = useState('');
-
+}> = ({ item, mode, onClose, onChanged, agency, previewIdentity }) => {
   useEffect(() => {
-    setComment('');
-  }, [item?.id]);
+    if (!item) return;
+    const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [item, onClose]);
 
   if (!item) return null;
-  const content = item.content;
-  const approval = item.approval;
-  const canClientReview = mode === 'client' && approval?.status === 'PENDING_CLIENT_APPROVAL';
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/70 p-[12px] md:p-[32px] overflow-y-auto" role="dialog" aria-modal="true">
-      <div className="max-w-[1050px] mx-auto min-h-full flex items-center">
-        <NeptiveCard className="w-full !bg-newBgColor">
-          <div className="flex items-start justify-between gap-[16px] mb-[14px]">
-            <div>
-              <div className="text-[11px] text-newTableText uppercase tracking-[0.08em]">Anteprima contenuto</div>
-              <h2 className="text-[20px] font-[700]">{item.title || content?.title || 'Contenuto Neptive'}</h2>
-              <div className="text-[12px] text-newTableText mt-[4px]">
-                {content?.channel || 'Canale da definire'} · {contentTypeLabel(content?.contentType)} · {formatWhen(content?.scheduledAt)}
-              </div>
-            </div>
-            <button type="button" className="text-[20px] text-newTableText" onClick={onClose} aria-label="Chiudi">×</button>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_330px] gap-[16px]">
-            <div className="flex flex-col gap-[8px]">
-              {content ? (
-                <PlatformPreviewSwitcher content={content as any} identity={previewIdentity} />
-              ) : (
-                <div className="rounded-[10px] bg-black min-h-[300px] flex items-center justify-center text-[13px] text-white/70">Nessun contenuto Neptive collegato</div>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-[12px]">
-              <section>
-                <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText mb-[5px]">Testo del post</div>
-                <div className="rounded-[8px] bg-newBgColorInner p-[10px] text-[14px] whitespace-pre-wrap break-words">{content?.caption || 'Nessuna caption'}</div>
-              </section>
-              <section className="flex flex-wrap gap-[5px]">
-                <NeptiveBadge>{content?.platform || '—'}</NeptiveBadge>
-                <NeptiveBadge>{contentTypeLabel(content?.contentType)}</NeptiveBadge>
-                <NeptiveBadge tone={statusTone(content?.publishingState || '')}>{content?.publishingState || 'UNLINKED'}</NeptiveBadge>
-                {approval && <NeptiveBadge tone={statusTone(approval.status)}>{approval.status}</NeptiveBadge>}
-              </section>
-              <section className="text-[13px]">
-                <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText mb-[5px]">Programmazione</div>
-                <div>{formatWhen(content?.scheduledAt)}</div>
-                <div className="text-[12px] text-newTableText">{content?.channel || 'Canale non collegato'}</div>
-              </section>
-              {mode === 'agency' && item.notes && (
-                <section>
-                  <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText mb-[5px]">Nota agenzia</div>
-                  <div className="text-[13px] whitespace-pre-wrap">{item.notes}</div>
-                </section>
-              )}
-              {!!approval?.comments?.length && (
-                <section>
-                  <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText mb-[5px]">Feedback</div>
-                  <div className="flex flex-col gap-[5px] text-[12px]">
-                    {approval.comments.map((entry) => <div key={entry.id}><strong>{entry.authorName}:</strong> {entry.body}</div>)}
-                  </div>
-                </section>
-              )}
-              {canClientReview && (
-                <section className="border-t border-newTableBorder pt-[12px] flex flex-col gap-[8px]">
-                  <textarea className={areaClass} placeholder="Commento richiesto per chiedere modifiche" value={comment} onChange={(event) => setComment(event.target.value)} />
-                  <div className="flex flex-wrap gap-[8px]">
-                    <Button onClick={onApprove} disabled={busy}>Approva contenuto</Button>
-                    <Button secondary onClick={() => { if (comment.trim()) onRequestChanges?.(comment.trim()); }} disabled={busy || !comment.trim()}>Richiedi modifica</Button>
-                  </div>
-                </section>
-              )}
-            </div>
-          </div>
-        </NeptiveCard>
+    <div className="fixed inset-0 z-[100] bg-black/70 p-[8px] md:p-[32px] overflow-y-auto" role="dialog" aria-modal="true" aria-label={item.title}>
+      <div className="max-w-[1100px] mx-auto">
+        <div className="flex justify-end mb-[6px]">
+          <button type="button" className="text-[13px] px-[12px] h-[36px] rounded-[8px] bg-newBgColorInner text-textColor" onClick={onClose}>
+            Chiudi ×
+          </button>
+        </div>
+        <PedSlotCard
+          item={item}
+          mode={mode}
+          previewIdentity={previewIdentity}
+          onChanged={onChanged || (() => undefined)}
+          agency={agency}
+          className="!bg-newBgColor"
+        />
       </div>
     </div>
   );

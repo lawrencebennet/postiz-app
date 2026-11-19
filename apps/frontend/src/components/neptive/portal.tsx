@@ -19,9 +19,9 @@ import {
   statusTone,
 } from '@gitroom/frontend/components/neptive/neptive.ui';
 import clsx from 'clsx';
-import { PedCalendar, PedContentList, pedSummary } from '@gitroom/frontend/components/neptive/ped-calendar';
+import { PedCalendar, pedSummary } from '@gitroom/frontend/components/neptive/ped-calendar';
 import { PedCalendarItem } from '@gitroom/frontend/components/neptive/ped-content-card';
-import { PedContentDetail } from '@gitroom/frontend/components/neptive/ped-content-detail';
+import { PedSlotFeed, scrollToSlot } from '@gitroom/frontend/components/neptive/ped-variants';
 
 const NAV = [
   { href: '/portal', label: 'Overview' },
@@ -60,7 +60,7 @@ export const PortalShell = ({
 
   return (
     <div className="min-h-screen bg-newBgColor text-textColor">
-      <div className="border-b border-newTableBorder px-[24px] py-[14px] flex items-center justify-between">
+      <div className="border-b border-newTableBorder px-[12px] md:px-[24px] py-[14px] flex items-center justify-between">
         <div>
           <div className="text-[12px] text-newTableText">Client portal</div>
           <div className="font-[700]" suppressHydrationWarning>
@@ -71,7 +71,7 @@ export const PortalShell = ({
           Sign out
         </button>
       </div>
-      <div className="flex flex-wrap gap-[6px] px-[24px] py-[12px]">
+      <div className="flex flex-wrap gap-[6px] px-[12px] md:px-[24px] py-[12px]">
         {NAV.map((item) => (
           <Link
             key={item.href}
@@ -87,7 +87,7 @@ export const PortalShell = ({
           </Link>
         ))}
       </div>
-      <div className="px-[24px] pb-[40px] max-w-[1100px]">{children}</div>
+      <div className="px-[12px] md:px-[24px] pb-[40px] max-w-[1100px]">{children}</div>
     </div>
   );
 };
@@ -196,7 +196,6 @@ export const PortalPeds = () => {
   const { data, mutate } = useNeptivePortal('peds');
   const { data: previewIdentity } = useNeptivePortal('preview-identity');
   const fetch = useFetch();
-  const [selectedItem, setSelectedItem] = useState<PedCalendarItem | null>(null);
   const [pedComment, setPedComment] = useState('');
   const [busy, setBusy] = useState(false);
   const transition = useCallback(
@@ -217,34 +216,19 @@ export const PortalPeds = () => {
     },
     [fetch, mutate, pedComment]
   );
-  const reviewContent = useCallback(async (status: string, comment?: string) => {
-    if (!selectedItem?.approval?.id) return;
-    setBusy(true);
-    try {
-      const response = await fetch(`/neptive/portal/approvals/${selectedItem.approval.id}/transition`, {
-        method: 'POST',
-        body: JSON.stringify({ status, comment }),
-      });
-      if (response.ok) {
-        setSelectedItem(null);
-        await mutate();
-      }
-    } finally {
-      setBusy(false);
-    }
-  }, [fetch, mutate, selectedItem]);
   return (
-    <div className="flex flex-col gap-[12px]">
+    <div className="flex flex-col gap-[12px] min-w-0">
       {(data || []).map((ped: any) => {
         const items = (ped.items || []) as PedCalendarItem[];
         const summary = pedSummary(items);
+        const toChoose = items.filter((item) => (item.variants || []).some((variant) => variant.client?.canDecide)).length;
         return (
-          <div key={ped.id} className="flex flex-col gap-[12px]">
+          <div key={ped.id} className="flex flex-col gap-[12px] min-w-0">
             <NeptiveCard>
               <div className="flex items-start justify-between gap-[12px] flex-wrap">
-                <div>
+                <div className="min-w-0">
                   <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText">Piano editoriale</div>
-                  <div className="text-[24px] font-[700]">{ped.name}</div>
+                  <div className="text-[22px] md:text-[24px] font-[700] break-words">{ped.name}</div>
                   <div className="text-[12px] text-newTableText">{ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}</div>
                 </div>
                 <NeptiveBadge tone={statusTone(ped.status)}>{ped.status}</NeptiveBadge>
@@ -256,6 +240,7 @@ export const PortalPeds = () => {
                 <NeptiveBadge>{summary.reels} reel</NeptiveBadge>
                 <NeptiveBadge>{summary.posts} post</NeptiveBadge>
                 <NeptiveBadge>{summary.stories} stories</NeptiveBadge>
+                {toChoose > 0 && <NeptiveBadge tone="warn">{toChoose} da valutare</NeptiveBadge>}
               </div>
               {ped.status === 'CLIENT_REVIEW' && (
                 <div className="mt-[14px] flex flex-col gap-[8px]">
@@ -267,13 +252,23 @@ export const PortalPeds = () => {
                 </div>
               )}
             </NeptiveCard>
-            <PedCalendar items={items} periodStart={ped.periodStart} periodEnd={ped.periodEnd} onOpen={setSelectedItem} />
-            <PedContentList items={items} onOpen={setSelectedItem} />
+            <details className="hidden md:block group">
+              <summary className="cursor-pointer select-none text-[13px] font-[600] text-newTableText px-[4px] py-[4px] hover:text-textColor">
+                Vista calendario del mese
+              </summary>
+              <div className="mt-[8px]">
+                <PedCalendar items={items} periodStart={ped.periodStart} periodEnd={ped.periodEnd} onOpen={scrollToSlot} mobileList={false} />
+              </div>
+            </details>
+            <div className="flex items-baseline justify-between gap-[8px] mt-[4px]">
+              <h2 className="text-[16px] font-[700]">Contenuti in ordine di data</h2>
+              <span className="text-[12px] text-newTableText">{items.length} date</span>
+            </div>
+            <PedSlotFeed items={items} mode="client" previewIdentity={previewIdentity} onChanged={mutate} />
           </div>
         );
       })}
       {!data?.length && <NeptiveCard title="Piani editoriali"><NeptiveEmpty>Nessun piano editoriale</NeptiveEmpty></NeptiveCard>}
-      <PedContentDetail item={selectedItem} mode="client" previewIdentity={previewIdentity} onClose={() => setSelectedItem(null)} onApprove={() => reviewContent('APPROVED')} onRequestChanges={(comment) => reviewContent('CHANGES_REQUESTED', comment)} busy={busy} />
     </div>
   );
 };
@@ -308,7 +303,11 @@ export const PortalApprovals = () => {
       {(data || []).map((row: any) => (
         <NeptiveCard
           key={row.id}
-          title={row.title || row.post?.text || 'Content for approval'}
+          title={
+            row.variant
+              ? `${row.variant.itemTitle || row.title || 'Contenuto'} · variante ${row.variant.label}`
+              : row.title || row.post?.text || 'Content for approval'
+          }
         >
           <NeptiveBadge tone={statusTone(row.status)}>{row.status}</NeptiveBadge>
           {row.post?.text && (

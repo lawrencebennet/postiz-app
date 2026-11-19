@@ -33,7 +33,9 @@ export const PedCalendar: FC<{
   periodStart?: string;
   periodEnd?: string;
   onOpen: (item: PedCalendarItem) => void;
-}> = ({ items, periodStart, periodEnd, onOpen }) => {
+  /** false when the page already lists the items below (portal feed) */
+  mobileList?: boolean;
+}> = ({ items, periodStart, periodEnd, onOpen, mobileList = true }) => {
   const start = useMemo(() => {
     const date = new Date(periodStart || new Date().toISOString());
     date.setDate(1);
@@ -65,10 +67,10 @@ export const PedCalendar: FC<{
           </div>;
         })}
       </div>
-      <div className="md:hidden flex flex-col gap-[8px]">
+      {mobileList && <div className="md:hidden flex flex-col gap-[8px]">
         {items.slice().sort((a, b) => String(a.content?.scheduledAt || '').localeCompare(String(b.content?.scheduledAt || ''))).map((item) => <PedContentCard key={item.id} item={item} onOpen={onOpen} />)}
         {!items.length && <NeptiveEmpty>Nessun contenuto in questo PED</NeptiveEmpty>}
-      </div>
+      </div>}
       {periodEnd && <div className="text-[11px] text-newTableText mt-[10px]">Periodo: {periodStart?.slice(0, 10)} → {periodEnd.slice(0, 10)}</div>}
     </NeptiveCard>
   );
