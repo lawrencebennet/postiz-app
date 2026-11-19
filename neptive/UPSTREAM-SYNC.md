@@ -51,7 +51,7 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 
 | file | change | conflict history |
 |---|---|---|
-| `libraries/nestjs-libraries/src/database/prisma/schema.prisma` | 338 lines appended (13 models) | auto-merged |
+| `libraries/nestjs-libraries/src/database/prisma/schema.prisma` | Neptive block appended (14 models; `NeptivePlanItemVariant` + 3 nullable item columns + 2 enum values added for post variants) | auto-merged |
 | `apps/backend/src/app.module.ts` | import + register `NeptiveApiModule` | auto-merged |
 | `apps/backend/src/main.ts` | CORS allowed header `neptive-portal` (+ exposed header in NOT_SECURED) | **conflicted** in v2.26.0 merge: upstream added `x-postiz-org` headers on the same lines |
 | `apps/backend/src/services/auth/permissions/permissions.guard.ts` | skip policy check for `/neptive/portal*` | auto-merged |
@@ -59,6 +59,7 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 | `apps/frontend/src/components/layout/layout.context.tsx` | portal 401 handling, store `neptive-portal` header | auto-merged |
 | `apps/frontend/src/components/layout/top.menu.tsx` | "Agency" menu item | auto-merged |
 | `libraries/helpers/src/utils/custom.fetch.func.ts` | send `neptive-portal` header in NOT_SECURED mode | auto-merged |
+| `libraries/nestjs-libraries/src/temporal/temporal.module.ts` | import + `interceptors` line in the worker `workerOptions` (variant publish gate) | new on `neptive-next` (post variants) |
 | `package.json`, `pnpm-lock.yaml` | `embla-carousel-react` dependency | auto-merged (lockfile verified with `--frozen-lockfile`) |
 | `.gitignore` | ignore Next-generated `apps/frontend/AGENTS.md`/`CLAUDE.md` | auto-merged |
 | `apps/frontend/src/app/(app)/auth/layout.tsx`, `auth/login/page.tsx`, `auth/page.tsx`, `components/auth/register.tsx`, `components/ui/logo-text.component.tsx` | white-label WIP from production working tree (no Postiz marketing panel, Neptive logo, no sign-up pitch) | **`auth/layout.tsx` conflicted** (upstream wrapped it in `MantineWrapper` + `Toaster`) |
@@ -73,3 +74,7 @@ single Neptive component swapped in at one place rather than edits spread over t
 3. `apps/backend/src/api/api.module.ts`: Neptive controllers are not in `authenticatedController` (they are registered by `NeptiveApiModule` with their own middleware); if upstream starts applying `AuthMiddleware` or a global guard more broadly, portal routes break.
 4. Anything upstream renames in `@gitroom/*` imports used by Neptive code (the build catches this).
 5. Browser: `/agency`, a portal magic link, `/portal/ped`, a post detail (`neptive/dev/qa.mjs`).
+6. `temporal.module.ts`: the worker `workerOptions` still carry `interceptors: { activity: neptiveActivityInterceptors() }`, and
+   `apps/orchestrator/src/activities/post.activity.ts` still publishes only through `postSocial` / `postSocialPending` /
+   `postComment` (grep the provider calls `.post(` / `.postPending(` / `.comment(`). A new publishing activity name must be
+   added to `NEPTIVE_GATED_ACTIVITIES` in `libraries/nestjs-libraries/src/neptive/publish-gate/variant-publish.gate.ts`.

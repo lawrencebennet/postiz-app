@@ -1,6 +1,8 @@
 import { TemporalModule } from 'nestjs-temporal-core';
 import { socialIntegrationList } from '@gitroom/nestjs-libraries/integrations/integration.manager';
 import { emailQueues } from '@gitroom/nestjs-libraries/temporal/email.queues';
+// Neptive: publish gate for unconfirmed post variants (see the file header)
+import { neptiveActivityInterceptors } from '@gitroom/nestjs-libraries/neptive/publish-gate/variant-publish.gate';
 
 export const getTemporalModule = (
   isWorkers: boolean,
@@ -77,6 +79,9 @@ export const getTemporalModule = (
                     // Sending every 15s keeps the recorded heartbeat fresh even
                     // when individual sends fail or fire late.
                     maxHeartbeatThrottleInterval: '15s',
+                    // Neptive: refuses postSocial / postSocialPending /
+                    // postComment for unconfirmed post variants
+                    interceptors: { activity: neptiveActivityInterceptors() },
                   },
                 };
               }),

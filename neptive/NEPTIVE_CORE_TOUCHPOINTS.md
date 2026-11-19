@@ -13,6 +13,7 @@ Intentional modifications **outside** `neptive/` folders. If a file is not liste
 | `apps/frontend/src/components/layout/layout.context.tsx` | Portal 401 must not clear Postiz auth; persist `neptive-portal` header | Dual auth | Medium | No |
 | `libraries/helpers/src/utils/custom.fetch.func.ts` | Send `neptive-portal` header in `NOT_SECURED` mode | Portal session | Low | Yes if portal is always httpOnly |
 | `apps/frontend/src/app/(app)/auth/{layout,page,login/page}.tsx`, `components/auth/register.tsx`, `components/ui/logo-text.component.tsx` | White-label (work in progress taken from the production working tree) | Auth screens | High (upstream edits auth often; `layout.tsx` conflicted at the v2.26.0 merge) | Yes, by swapping one Neptive component in |
+| `libraries/nestjs-libraries/src/temporal/temporal.module.ts` | One import + `interceptors: { activity: neptiveActivityInterceptors() }` in the social/main worker options: the publish gate that refuses `postSocial` / `postSocialPending` / `postComment` for post variants the client has not confirmed (`libraries/nestjs-libraries/src/neptive/publish-gate/`) | Publishing safety of PED variants | Medium (upstream tunes `workerOptions` here; the line sits next to `maxHeartbeatThrottleInterval`) | No: it is the only point every publish passes through without editing the frozen workflows or the activities |
 | `.gitignore` | Ignore Next.js-generated `apps/frontend/AGENTS.md` and `CLAUDE.md` | Clean clones | Low | Yes |
 
 **Not touchpoints (new isolated trees):**
@@ -24,4 +25,4 @@ Intentional modifications **outside** `neptive/` folders. If a file is not liste
 - `apps/frontend/src/app/(app)/(portal)/**`
 - `neptive/**`
 
-**Forbidden without a new row in this file:** Temporal workflows, social providers, composer internals, Prisma columns on `Post`/`Integration`/`User`.
+**Forbidden without a new row in this file:** Temporal workflows (the variant gate is a worker interceptor precisely so that no workflow or activity file changes), social providers, composer internals, Prisma columns on `Post`/`Integration`/`User`.
