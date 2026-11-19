@@ -7,7 +7,7 @@ cd "$(dirname "$0")/../.."
 source neptive/dev/env.sh
 # the only target: the local container from compose.local.yml
 docker inspect pzn-postgres >/dev/null 2>&1 || { echo "pzn-postgres is not running (neptive/dev/stack.sh up)"; exit 1; }
-PSQL="docker exec -i pzn-postgres psql -U postiz-app -d postiz-db -v ON_ERROR_STOP=1"
+PSQL="docker exec -i pzn-postgres psql -U postiz-app -d "${PZN_DB:-postiz-db}" -v ON_ERROR_STOP=1"
 $PSQL -P pager=off < neptive/dev/seed-variants.sql
 
 AURORA_CUSTOMER=7233ce6e-bd06-46cd-9d5e-cc53d19cdeec

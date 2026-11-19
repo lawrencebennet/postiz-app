@@ -11,10 +11,13 @@ import os from 'node:os';
 const require = createRequire(os.homedir() + '/.local/share/mise/installs/npm-playwright/latest/node_modules/');
 const { chromium } = require('playwright');
 const ROOT = new URL('../../', import.meta.url).pathname;
-const SHOTS = new URL('./.data/shots/variants/', import.meta.url).pathname;
+const SHOTS = process.env.PZN_SHOTS || new URL('./.data/shots/variants/', import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
-const BASE = 'http://localhost:4200';
-const API = 'http://localhost:3000';
+// env overrides let the same script drive the production image (see neptive/DEPLOY.md): PZN_BASE=https://portal.neptive.com
+// PZN_API=https://127.0.0.1:8443/api PZN_DB=rehearsal PZN_HOST_RULES='MAP portal.neptive.com 127.0.0.1:8443' PZN_SHOTS=<dir>
+const BASE = process.env.PZN_BASE || 'http://localhost:4200';
+const API = process.env.PZN_API || 'http://localhost:3000';
+const DB = process.env.PZN_DB || 'postiz-db';
 const ORG = 'd6d585e7-d225-4225-9f96-d8b595c53d72';
 const AURORA = '7233ce6e-bd06-46cd-9d5e-cc53d19cdeec';
 const AURORA_USER = '4ba46056-00e2-46e0-8627-42b47b46184b';
@@ -24,8 +27,8 @@ const log = [];
 const say = (line) => { log.push(line); console.log(line); };
 
 const psql = (sql) =>
-  execFileSync('docker', ['exec', '-i', 'pzn-postgres', 'psql', '-U', 'postiz-app', '-d', 'postiz-db', '-At', '-c', sql]).toString().trim();
-const seed = () => execFileSync(ROOT + 'neptive/dev/seed-variants.sh', { stdio: 'pipe' }).toString();
+  execFileSync('docker', ['exec', '-i', 'pzn-postgres', 'psql', '-U', 'postiz-app', '-d', DB, '-At', '-c', sql]).toString().trim();
+const seed = () => execFileSync(ROOT + 'neptive/dev/seed-variants.sh', { stdio: 'pipe', env: { ...process.env, PZN_DB: DB } }).toString();
 function magicLink() {
   const token = crypto.randomBytes(24).toString('hex');
   const hash = crypto.createHash('sha256').update(token).digest('hex');
@@ -35,8 +38,9 @@ function magicLink() {
 
 const browser = await chromium.launch({
   executablePath: '/usr/bin/chromium',
-  args: ['--use-angle=vulkan', '--enable-gpu', '--ignore-gpu-blocklist'],
+  args: ['--use-angle=vulkan', '--enable-gpu', '--ignore-gpu-blocklist', ...(process.env.PZN_HOST_RULES ? [`--host-resolver-rules=${process.env.PZN_HOST_RULES}`] : [])],
 });
+{ const open = browser.newContext.bind(browser); browser.newContext = (options = {}) => open({ ignoreHTTPSErrors: true, ...options }); }
 
 async function settle(page, ms = 1500) {
   await page.waitForLoadState('networkidle').catch(() => {});
