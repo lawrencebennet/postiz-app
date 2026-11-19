@@ -1,9 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Button } from '@gitroom/react/form/button';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import {
   useNeptivePortal,
@@ -14,32 +13,34 @@ import {
   NeptiveCard,
   NeptiveEmpty,
   areaClass,
+  formatPeriod,
   formatWhen,
   postPreviewText,
+  statusLabel,
   statusTone,
 } from '@gitroom/frontend/components/neptive/neptive.ui';
 import clsx from 'clsx';
 import { PedCalendar, pedSummary } from '@gitroom/frontend/components/neptive/ped-calendar';
 import { PedCalendarItem } from '@gitroom/frontend/components/neptive/ped-content-card';
 import { PedSlotFeed, scrollToSlot } from '@gitroom/frontend/components/neptive/ped-variants';
+import { NeptiveWordmark } from '@gitroom/frontend/components/neptive/brand/logo';
+import { NeptiveAuthShell } from '@gitroom/frontend/components/neptive/brand/auth-shell';
 
 const NAV = [
-  { href: '/portal', label: 'Overview' },
-  { href: '/portal/ped', label: 'PED' },
-  { href: '/portal/approvals', label: 'Approvals' },
-  { href: '/portal/calendar', label: 'Upcoming' },
-  { href: '/portal/strategy', label: 'Strategy' },
-  { href: '/portal/activities', label: 'Work done' },
-  { href: '/portal/materials', label: 'Materials' },
-  { href: '/portal/reports', label: 'Reports' },
-  { href: '/portal/analytics', label: 'Results' },
+  { href: '/portal', label: 'Panoramica' },
+  { href: '/portal/ped', label: 'Piano editoriale' },
+  { href: '/portal/approvals', label: 'Approvazioni' },
+  { href: '/portal/calendar', label: 'In uscita' },
+  { href: '/portal/strategy', label: 'Strategia' },
+  { href: '/portal/activities', label: 'Lavoro svolto' },
+  { href: '/portal/materials', label: 'Materiali' },
+  { href: '/portal/reports', label: 'Report' },
+  { href: '/portal/analytics', label: 'Risultati' },
 ];
 
-export const PortalShell = ({
-  children,
-}: {
-  children: React.ReactNode;
-}) => {
+const firstName = (name?: string | null) => (name || '').trim().split(/\s+/)[0] || '';
+
+export const PortalShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const { data: me } = useNeptivePortalMe();
   const fetch = useFetch();
@@ -59,138 +60,282 @@ export const PortalShell = ({
   }, [fetch, router]);
 
   return (
-    <div className="min-h-screen bg-newBgColor text-textColor">
-      <div className="border-b border-newTableBorder px-[12px] md:px-[24px] py-[14px] flex items-center justify-between">
-        <div>
-          <div className="text-[12px] text-newTableText">Client portal</div>
-          <div className="font-[700]" suppressHydrationWarning>
-            {me?.name || 'Welcome'}
+    <div className="min-h-screen flex flex-col bg-[var(--nx-bg)] text-[var(--nx-text)]">
+      <header className="sticky top-0 z-[40] bg-[var(--nx-bg)]/95 backdrop-blur-md border-b border-[var(--nx-line)]">
+        <div className="max-w-[1180px] mx-auto px-[16px] md:px-[32px] h-[58px] flex items-center justify-between gap-[12px]">
+          <Link href="/portal" className="flex items-end gap-[10px] min-w-0" aria-label="Neptive, portale clienti">
+            <NeptiveWordmark className="h-[21px] w-auto shrink-0" />
+            <span className="nx-label leading-none pb-[1px] hidden sm:inline">Portale clienti</span>
+          </Link>
+          <div className="flex items-center gap-[14px] min-w-0">
+            <span className="nx-label truncate max-w-[180px] hidden sm:block" suppressHydrationWarning>
+              {me?.name || ''}
+            </span>
+            <button type="button" className="nx-btn" data-size="sm" onClick={logout}>
+              Esci
+            </button>
           </div>
         </div>
-        <button className="text-[13px] text-newTableText" onClick={logout}>
-          Sign out
-        </button>
-      </div>
-      <div className="flex flex-wrap gap-[6px] px-[12px] md:px-[24px] py-[12px]">
-        {NAV.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={clsx(
-              'px-[10px] py-[6px] rounded-[8px] text-[12px] font-[600]',
-              navReady && pathname === item.href
-                ? 'bg-boxFocused text-textItemFocused'
-                : 'text-newTableText hover:bg-newBoxHover'
-            )}
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
-      <div className="px-[12px] md:px-[24px] pb-[40px] max-w-[1100px]">{children}</div>
+        <nav className="max-w-[1180px] mx-auto" aria-label="Sezioni del portale">
+          <ul className="flex gap-[4px] overflow-x-auto px-[16px] md:px-[32px] pb-[10px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {NAV.map((item) => {
+              const active = navReady && pathname === item.href;
+              return (
+                <li key={item.href} className="shrink-0">
+                  <Link
+                    href={item.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={clsx(
+                      'nx-mono inline-flex items-center h-[30px] px-[10px] rounded-[2px] text-[10.5px] uppercase tracking-[0.03em] transition-colors',
+                      active
+                        ? 'bg-[var(--nx-text)] text-[var(--nx-bg)]'
+                        : 'text-[var(--nx-text-muted)] hover:text-[var(--nx-text)] hover:bg-[var(--nx-surface-2)]'
+                    )}
+                  >
+                    {item.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </header>
+      <main className="flex-1 w-full max-w-[1180px] mx-auto px-[16px] md:px-[32px] pt-[24px] md:pt-[40px] pb-[56px] min-w-0">
+        {children}
+      </main>
+      <footer className="w-full max-w-[1180px] mx-auto px-[16px] md:px-[32px] pb-[20px]">
+        <div className="nx-rule pt-[12px] flex flex-wrap justify-between gap-[8px] nx-label">
+          <span>Neptive Studio · Social Portal</span>
+          <a href="mailto:info@neptive.com" className="hover:text-[var(--nx-text)]">
+            Serve aiuto? info@neptive.com
+          </a>
+        </div>
+      </footer>
     </div>
   );
 };
 
-export const PortalLogin = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-newBgColor text-textColor">
-      <NeptiveCard title="Client portal">
-        <div className="text-[13px] text-newTableText max-w-[360px]">
-          Use the magic link sent by your agency. If you already opened it, this
-          page will sign you in automatically.
-        </div>
-      </NeptiveCard>
+/** page title block: mono eyebrow + display heading (+ optional aside) */
+export const PortalHeader = ({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow: string;
+  title: string;
+  children?: ReactNode;
+}) => (
+  <div className="mb-[24px] md:mb-[36px] flex flex-col md:flex-row md:items-end md:justify-between gap-[14px]">
+    <div className="min-w-0">
+      <div className="nx-label mb-[10px] md:mb-[16px]">[ {eyebrow} ]</div>
+      <h1 className="nx-display text-[40px] sm:text-[52px] md:text-[72px] break-words">{title}</h1>
     </div>
-  );
-};
+    {children && <div className="min-w-0 md:max-w-[420px] md:text-end">{children}</div>}
+  </div>
+);
+
+export const PortalLogin = () => (
+  <NeptiveAuthShell
+    eyebrow="[ Portale clienti ]"
+    tag="[ Portale clienti ]"
+    title={
+      <>
+        Il tuo
+        <br />
+        portale.
+      </>
+    }
+    intro="Il piano editoriale, le anteprime dei post e le approvazioni, in un unico posto."
+  >
+    <div className="flex-1 flex flex-col">
+      <h2 className="nx-heading text-[30px] md:text-[34px]">Accedi con il tuo link</h2>
+      <p className="mt-[12px] text-[15px] leading-[1.5] text-[var(--nx-text-muted)]">
+        Per entrare usa il link personale che ti abbiamo inviato via email. Se lo hai già aperto su questo
+        dispositivo, puoi andare direttamente al portale.
+      </p>
+      <Link href="/portal" data-variant="primary" className="nx-btn mt-[24px] w-full">
+        Apri il portale <span className="nx-arrow" aria-hidden="true">↗</span>
+      </Link>
+      <p className="mt-[18px] text-[14px] text-[var(--nx-text-muted)]">
+        Non trovi il link?{' '}
+        <a className="nx-link text-[var(--nx-text)]" href="mailto:info@neptive.com">
+          Scrivi a info@neptive.com
+        </a>
+      </p>
+    </div>
+  </NeptiveAuthShell>
+);
 
 export const PortalMagic = ({ token }: { token: string }) => {
   const fetch = useFetch();
   const router = useRouter();
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   const confirm = useCallback(async () => {
+    setBusy(true);
     const response = await fetch('/neptive/portal-auth/magic', {
       method: 'POST',
       body: JSON.stringify({ token }),
     });
     if (!response.ok) {
-      setError('This link is invalid or has already been used.');
+      setError('Questo link non è valido o è già stato usato.');
+      setBusy(false);
       return;
     }
     router.push('/portal');
   }, [fetch, token, router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-newBgColor text-textColor">
-      <NeptiveCard title="Open your portal">
-        <div className="flex flex-col gap-[12px] max-w-[360px]">
-          <div className="text-[13px] text-newTableText">
-            Confirm to enter your company workspace. You will only see your own
-            content.
+    <NeptiveAuthShell
+      eyebrow="[ Portale clienti ]"
+      tag="[ Portale clienti ]"
+      title={
+        <>
+          Benve-
+          <br />
+          nuto.
+        </>
+      }
+      intro="Qui trovi il piano editoriale, le anteprime dei post e le approvazioni che ti chiediamo."
+    >
+      <div className="flex-1 flex flex-col">
+        <h2 className="nx-heading text-[30px] md:text-[34px]">Entra nel portale</h2>
+        <p className="mt-[12px] text-[15px] leading-[1.5] text-[var(--nx-text-muted)]">
+          Conferma per aprire lo spazio della tua azienda. Vedrai solo i tuoi contenuti.
+        </p>
+        {error && (
+          <div
+            role="alert"
+            className="mt-[18px] rounded-[var(--nx-r)] bg-[var(--nx-bad-bg)] px-[14px] py-[11px] text-[14px] text-[var(--nx-bad)]"
+          >
+            {error}{' '}
+            <a className="nx-link" href="mailto:info@neptive.com">
+              Chiedi un nuovo link
+            </a>
           </div>
-          {error && <div className="text-red-400 text-[13px]">{error}</div>}
-          <Button onClick={confirm}>Continue</Button>
+        )}
+        <button type="button" data-variant="primary" className="nx-btn mt-[24px] w-full" onClick={confirm} disabled={busy}>
+          {busy ? 'Apertura…' : 'Continua'}
+          {!busy && (
+            <span className="nx-arrow" aria-hidden="true">
+              ↗
+            </span>
+          )}
+        </button>
+        <p className="mt-[16px] nx-label">Il link è personale e vale una sola volta.</p>
+      </div>
+    </NeptiveAuthShell>
+  );
+};
+
+const SectionTitle = ({ children, aside }: { children: ReactNode; aside?: ReactNode }) => (
+  <div className="flex items-baseline justify-between gap-[12px] mb-[12px]">
+    <h2 className="nx-heading text-[20px] md:text-[24px]">{children}</h2>
+    {aside && <span className="nx-label shrink-0">{aside}</span>}
+  </div>
+);
+
+export const PortalOverview = () => {
+  const { data } = useNeptivePortal('dashboard');
+  const { data: me } = useNeptivePortalMe();
+  const waiting = data?.awaitingApproval || [];
+  const name = firstName(me?.name);
+  return (
+    <div className="flex flex-col gap-[16px] md:gap-[20px]">
+      <PortalHeader eyebrow={name ? `Ciao ${name}` : 'Portale clienti'} title="Panoramica." />
+
+      <section className="nx-card p-[18px] md:p-[28px] grid grid-cols-1 md:grid-cols-[auto_minmax(0,1fr)] gap-[16px] md:gap-[40px] items-start">
+        <div className="flex md:flex-col items-end md:items-start gap-[14px]">
+          <div className="nx-display text-[72px] md:text-[112px] leading-[0.8]">{waiting.length}</div>
+          <div className="nx-label pb-[6px] md:pb-0">
+            {waiting.length === 1 ? 'Contenuto da approvare' : 'Contenuti da approvare'}
+          </div>
         </div>
-      </NeptiveCard>
+        <div className="min-w-0 flex flex-col gap-[14px]">
+          {waiting.length ? (
+            <ul className="flex flex-col divide-y divide-[var(--nx-line)]">
+              {waiting.slice(0, 5).map((item: any) => (
+                <li key={item.id} className="py-[10px] first:pt-0 flex items-center justify-between gap-[12px]">
+                  <span className="text-[15px] leading-[1.35] min-w-0 break-words">{item.title || 'Contenuto'}</span>
+                  <NeptiveBadge tone={statusTone(item.status)}>{statusLabel(item.status)}</NeptiveBadge>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-[16px] text-[var(--nx-text-muted)]">Tutto in ordine: niente da approvare in questo momento.</p>
+          )}
+          <div className="flex flex-wrap gap-[8px]">
+            <Link href="/portal/ped" data-variant="primary" className="nx-btn">
+              Vai al piano editoriale <span className="nx-arrow" aria-hidden="true">↗</span>
+            </Link>
+            {waiting.length > 0 && (
+              <Link href="/portal/approvals" className="nx-btn">
+                Tutte le approvazioni
+              </Link>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-[16px] md:gap-[20px]">
+        <NeptiveCard title="Piano in corso">
+          {data?.currentPed ? (
+            <Link href="/portal/ped" className="block group">
+              <div className="nx-heading text-[22px] group-hover:underline underline-offset-4 decoration-1">
+                {data.currentPed.name}
+              </div>
+              <div className="mt-[10px] flex flex-wrap items-center gap-[8px]">
+                <NeptiveBadge tone={statusTone(data.currentPed.status)}>{statusLabel(data.currentPed.status)}</NeptiveBadge>
+                {(data.currentPed.periodStart || data.currentPed.periodEnd) && (
+                  <span className="nx-label">{formatPeriod(data.currentPed.periodStart, data.currentPed.periodEnd)}</span>
+                )}
+              </div>
+            </Link>
+          ) : (
+            <NeptiveEmpty>Nessun piano attivo.</NeptiveEmpty>
+          )}
+        </NeptiveCard>
+        <NeptiveCard title="In uscita" action={<Link className="nx-label nx-link" href="/portal/calendar">Tutti</Link>}>
+          <ul className="flex flex-col divide-y divide-[var(--nx-line)]">
+            {(data?.upcoming || []).slice(0, 4).map((item: any) => (
+              <li key={item.id} className="py-[10px] first:pt-0">
+                <div className="nx-label">{formatWhen(item.publishDate)}</div>
+                <div className="text-[14px] leading-[1.4] line-clamp-2 mt-[2px]">
+                  {postPreviewText(item.content) || 'Post programmato'}
+                </div>
+              </li>
+            ))}
+          </ul>
+          {!data?.upcoming?.length && <NeptiveEmpty>Niente in programma.</NeptiveEmpty>}
+        </NeptiveCard>
+        <NeptiveCard
+          title="Lavoro svolto da Neptive"
+          className="md:col-span-2"
+          action={<Link className="nx-label nx-link" href="/portal/activities">Tutto</Link>}
+        >
+          <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-[28px]">
+            {(data?.recentActivities || []).slice(0, 6).map((item: any) => (
+              <li key={item.id} className="py-[9px] border-b border-[var(--nx-line)] text-[14px] leading-[1.4]">
+                {item.title}
+              </li>
+            ))}
+          </ul>
+          {!data?.recentActivities?.length && <NeptiveEmpty>Ancora nessuna attività registrata.</NeptiveEmpty>}
+        </NeptiveCard>
+      </div>
     </div>
   );
 };
 
-export const PortalOverview = () => {
-  const { data } = useNeptivePortal('dashboard');
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-[12px]">
-      <NeptiveCard title="What needs my approval?">
-        {(data?.awaitingApproval || []).map((item: any) => (
-          <div key={item.id} className="py-[6px]">
-            {item.title || item.postGroup}{' '}
-            <NeptiveBadge tone="warn">{item.status}</NeptiveBadge>
-          </div>
-        ))}
-        {!data?.awaitingApproval?.length && (
-          <NeptiveEmpty>Nothing waiting</NeptiveEmpty>
-        )}
-      </NeptiveCard>
-      <NeptiveCard title="Current PED">
-        {data?.currentPed ? (
-          <div>
-            <div className="font-[600]">{data.currentPed.name}</div>
-            <NeptiveBadge tone={statusTone(data.currentPed.status)}>
-              {data.currentPed.status}
-            </NeptiveBadge>
-          </div>
-        ) : (
-          <NeptiveEmpty>No active plan</NeptiveEmpty>
-        )}
-      </NeptiveCard>
-      <NeptiveCard title="What Neptive has done">
-        {(data?.recentActivities || []).map((item: any) => (
-          <div key={item.id} className="text-[13px] py-[4px]">
-            {item.title}
-          </div>
-        ))}
-        {!data?.recentActivities?.length && (
-          <NeptiveEmpty>No recent work logged</NeptiveEmpty>
-        )}
-      </NeptiveCard>
-      <NeptiveCard title="Coming next">
-        {(data?.upcoming || []).map((item: any) => (
-          <div key={item.id} className="text-[13px] py-[4px]">
-            <div className="line-clamp-2">
-              {postPreviewText(item.content) || 'Scheduled post'}
-            </div>
-            <div className="text-[12px] text-newTableText">
-              {item.integration?.providerIdentifier} · {formatWhen(item.publishDate)}
-            </div>
-          </div>
-        ))}
-        {!data?.upcoming?.length && <NeptiveEmpty>Nothing scheduled</NeptiveEmpty>}
-      </NeptiveCard>
-    </div>
-  );
-};
+const PED_SUMMARY = (summary: ReturnType<typeof pedSummary>) =>
+  [
+    [summary.total, 'contenuti', 'contenuto'],
+    [summary.posts, 'post', 'post'],
+    [summary.carousels, 'caroselli', 'carosello'],
+    [summary.reels, 'reel', 'reel'],
+    [summary.stories, 'stories', 'story'],
+  ].filter(([count], index) => index === 0 || Number(count) > 0) as Array<[number, string, string]>;
 
 export const PortalPeds = () => {
   const { data, mutate } = useNeptivePortal('peds');
@@ -198,6 +343,7 @@ export const PortalPeds = () => {
   const fetch = useFetch();
   const [pedComment, setPedComment] = useState('');
   const [busy, setBusy] = useState(false);
+  const [readMore, setReadMore] = useState<Record<string, boolean>>({});
   const transition = useCallback(
     async (id: string, status: string) => {
       setBusy(true);
@@ -217,58 +363,115 @@ export const PortalPeds = () => {
     [fetch, mutate, pedComment]
   );
   return (
-    <div className="flex flex-col gap-[12px] min-w-0">
+    <div className="flex flex-col gap-[16px] min-w-0">
+      <PortalHeader eyebrow="Piano editoriale" title="I contenuti." />
       {(data || []).map((ped: any) => {
         const items = (ped.items || []) as PedCalendarItem[];
         const summary = pedSummary(items);
         const toChoose = items.filter((item) => (item.variants || []).some((variant) => variant.client?.canDecide)).length;
+        const long = (ped.objectives || '').length > 220;
         return (
-          <div key={ped.id} className="flex flex-col gap-[12px] min-w-0">
-            <NeptiveCard>
+          <div key={ped.id} className="flex flex-col gap-[16px] min-w-0">
+            <section className="nx-card p-[18px] md:p-[28px] min-w-0">
               <div className="flex items-start justify-between gap-[12px] flex-wrap">
                 <div className="min-w-0">
-                  <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText">Piano editoriale</div>
-                  <div className="text-[22px] md:text-[24px] font-[700] break-words">{ped.name}</div>
-                  <div className="text-[12px] text-newTableText">{ped.periodStart?.slice(0, 10)} → {ped.periodEnd?.slice(0, 10)}</div>
+                  <div className="nx-label">{formatPeriod(ped.periodStart, ped.periodEnd)}</div>
+                  <h2 className="nx-heading text-[26px] md:text-[34px] mt-[6px] break-words">{ped.name}</h2>
                 </div>
-                <NeptiveBadge tone={statusTone(ped.status)}>{ped.status}</NeptiveBadge>
+                <NeptiveBadge tone={statusTone(ped.status)}>{statusLabel(ped.status)}</NeptiveBadge>
               </div>
-              {ped.objectives && <div className="text-[13px] mt-[10px] whitespace-pre-wrap">{ped.objectives}</div>}
-              <div className="flex flex-wrap gap-[6px] mt-[12px]">
-                <NeptiveBadge>{summary.total} contenuti</NeptiveBadge>
-                <NeptiveBadge>{summary.carousels} caroselli</NeptiveBadge>
-                <NeptiveBadge>{summary.reels} reel</NeptiveBadge>
-                <NeptiveBadge>{summary.posts} post</NeptiveBadge>
-                <NeptiveBadge>{summary.stories} stories</NeptiveBadge>
-                {toChoose > 0 && <NeptiveBadge tone="warn">{toChoose} da valutare</NeptiveBadge>}
+              {ped.objectives && (
+                <div className="mt-[14px] max-w-[760px]">
+                  <p
+                    className={clsx(
+                      'text-[15px] leading-[1.55] text-[var(--nx-text-muted)] whitespace-pre-wrap',
+                      long && !readMore[ped.id] && 'line-clamp-4'
+                    )}
+                  >
+                    {ped.objectives}
+                  </p>
+                  {long && (
+                    <button
+                      type="button"
+                      className="nx-label nx-link mt-[6px] hover:!text-[var(--nx-text)]"
+                      onClick={() => setReadMore((current) => ({ ...current, [ped.id]: !current[ped.id] }))}
+                    >
+                      {readMore[ped.id] ? 'Mostra meno' : 'Leggi tutto'}
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-wrap gap-[6px] mt-[16px]">
+                {PED_SUMMARY(summary).map(([count, many, one]) => (
+                  <NeptiveBadge key={many}>
+                    {count} {count === 1 ? one : many}
+                  </NeptiveBadge>
+                ))}
+                {toChoose > 0 && <NeptiveBadge tone="solid">{toChoose} da valutare</NeptiveBadge>}
               </div>
               {ped.status === 'CLIENT_REVIEW' && (
-                <div className="mt-[14px] flex flex-col gap-[8px]">
-                  <textarea className={areaClass} placeholder="Commento generale o richiesta di modifica" value={pedComment} onChange={(event) => setPedComment(event.target.value)} />
-                  <div className="flex gap-[8px] flex-wrap">
-                    <Button onClick={() => transition(ped.id, 'APPROVED')} disabled={busy}>Approva piano editoriale</Button>
-                    <Button secondary onClick={() => { if (pedComment.trim()) transition(ped.id, 'CHANGES_REQUESTED'); }} disabled={busy || !pedComment.trim()}>Richiedi modifica</Button>
+                <div className="mt-[20px] pt-[18px] nx-rule flex flex-col gap-[10px]">
+                  <div className="nx-label">Il piano nel suo insieme</div>
+                  <textarea
+                    className={areaClass}
+                    placeholder="Commento generale o richiesta di modifica sul piano"
+                    value={pedComment}
+                    onChange={(event) => setPedComment(event.target.value)}
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-[8px] sm:max-w-[560px]">
+                    <button
+                      type="button"
+                      className="nx-btn"
+                      onClick={() => {
+                        if (pedComment.trim()) transition(ped.id, 'CHANGES_REQUESTED');
+                      }}
+                      disabled={busy || !pedComment.trim()}
+                    >
+                      Richiedi modifica
+                    </button>
+                    <button
+                      type="button"
+                      data-variant="primary"
+                      className="nx-btn"
+                      onClick={() => transition(ped.id, 'APPROVED')}
+                      disabled={busy}
+                    >
+                      Approva il piano
+                    </button>
                   </div>
                 </div>
               )}
-            </NeptiveCard>
-            <details className="hidden md:block group">
-              <summary className="cursor-pointer select-none text-[13px] font-[600] text-newTableText px-[4px] py-[4px] hover:text-textColor">
+            </section>
+            <details className="hidden md:block group nx-card">
+              <summary className="cursor-pointer select-none list-none flex items-center justify-between px-[20px] py-[14px] nx-label hover:!text-[var(--nx-text)]">
                 Vista calendario del mese
+                <span aria-hidden="true" className="nx-mono text-[14px] group-open:rotate-45 transition-transform">
+                  +
+                </span>
               </summary>
-              <div className="mt-[8px]">
-                <PedCalendar items={items} periodStart={ped.periodStart} periodEnd={ped.periodEnd} onOpen={scrollToSlot} mobileList={false} />
+              <div className="px-[12px] pb-[12px]">
+                <PedCalendar
+                  items={items}
+                  periodStart={ped.periodStart}
+                  periodEnd={ped.periodEnd}
+                  onOpen={scrollToSlot}
+                  mobileList={false}
+                  bare
+                />
               </div>
             </details>
-            <div className="flex items-baseline justify-between gap-[8px] mt-[4px]">
-              <h2 className="text-[16px] font-[700]">Contenuti in ordine di data</h2>
-              <span className="text-[12px] text-newTableText">{items.length} date</span>
+            <div className="mt-[8px]">
+              <SectionTitle aside={`${items.length} ${items.length === 1 ? 'data' : 'date'}`}>In ordine di data</SectionTitle>
             </div>
             <PedSlotFeed items={items} mode="client" previewIdentity={previewIdentity} onChanged={mutate} />
           </div>
         );
       })}
-      {!data?.length && <NeptiveCard title="Piani editoriali"><NeptiveEmpty>Nessun piano editoriale</NeptiveEmpty></NeptiveCard>}
+      {!data?.length && (
+        <NeptiveCard>
+          <NeptiveEmpty>Non c’è ancora un piano editoriale da mostrarti.</NeptiveEmpty>
+        </NeptiveCard>
+      )}
     </div>
   );
 };
@@ -277,20 +480,21 @@ export const PortalApprovals = () => {
   const { data, mutate } = useNeptivePortal('approvals');
   const fetch = useFetch();
   const [comments, setComments] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const act = useCallback(
     async (id: string, status: string) => {
       const comment = comments[id] || '';
-      if (
-        (status === 'CHANGES_REQUESTED' || status === 'REJECTED') &&
-        !comment.trim()
-      ) {
+      if ((status === 'CHANGES_REQUESTED' || status === 'REJECTED') && !comment.trim()) {
+        setErrors((current) => ({ ...current, [id]: 'Scrivi un commento per spiegare cosa cambiare.' }));
         return;
       }
+      setErrors((current) => ({ ...current, [id]: '' }));
       const response = await fetch(`/neptive/portal/approvals/${id}/transition`, {
         method: 'POST',
         body: JSON.stringify({ status, comment }),
       });
       if (!response.ok) {
+        setErrors((current) => ({ ...current, [id]: 'Non è stato possibile completare l’azione. Riprova.' }));
         return;
       }
       setComments((current) => ({ ...current, [id]: '' }));
@@ -298,38 +502,50 @@ export const PortalApprovals = () => {
     },
     [fetch, comments, mutate]
   );
+  const rows = data || [];
+  const pending = rows.filter((row: any) => row.status === 'PENDING_CLIENT_APPROVAL').length;
   return (
-    <div className="flex flex-col gap-[12px]">
-      {(data || []).map((row: any) => (
-        <NeptiveCard
-          key={row.id}
-          title={
-            row.variant
-              ? `${row.variant.itemTitle || row.title || 'Contenuto'} · variante ${row.variant.label}`
-              : row.title || row.post?.text || 'Content for approval'
-          }
-        >
-          <NeptiveBadge tone={statusTone(row.status)}>{row.status}</NeptiveBadge>
-          {row.post?.text && (
-            <div className="text-[13px] mt-[8px] whitespace-pre-wrap">
-              {row.post.text}
+    <div className="flex flex-col gap-[14px]">
+      <PortalHeader eyebrow="Approvazioni" title="Le tue decisioni.">
+        <p className="text-[15px] text-[var(--nx-text-muted)]">
+          {pending ? `${pending} in attesa di una tua risposta.` : 'Nessuna approvazione in attesa.'}
+        </p>
+      </PortalHeader>
+      {rows.map((row: any) => (
+        <section key={row.id} className="nx-card p-[16px] md:p-[22px] min-w-0">
+          <div className="flex items-start justify-between gap-[12px]">
+            <div className="min-w-0">
+              <div className="nx-label">
+                {[row.post?.provider, formatWhen(row.post?.publishDate)].filter(Boolean).join(' · ')}
+              </div>
+              <h2 className="nx-heading text-[19px] md:text-[22px] mt-[4px] break-words">
+                {row.variant
+                  ? `${row.variant.itemTitle || row.title || 'Contenuto'} · variante ${row.variant.label}`
+                  : row.title || postPreviewText(row.post?.text) || 'Contenuto da approvare'}
+              </h2>
             </div>
-          )}
-          <div className="text-[12px] text-newTableText mt-[8px]">
-            {[row.post?.provider, row.post?.state, formatWhen(row.post?.publishDate)]
-              .filter(Boolean)
-              .join(' · ')}
+            <NeptiveBadge tone={statusTone(row.status)}>{statusLabel(row.status)}</NeptiveBadge>
           </div>
-          {(row.comments || []).map((item: any) => (
-            <div key={item.id} className="text-[13px] py-[4px]">
-              {item.authorName}: {item.body}
-            </div>
-          ))}
+          {row.post?.text && (
+            <p className="text-[14px] leading-[1.5] mt-[12px] whitespace-pre-wrap text-[var(--nx-text-muted)] line-clamp-6">
+              {row.post.text}
+            </p>
+          )}
+          {!!row.comments?.length && (
+            <ul className="mt-[14px] flex flex-col gap-[6px]">
+              {row.comments.map((item: any) => (
+                <li key={item.id} className="text-[14px] leading-[1.45] rounded-[var(--nx-r)] bg-[var(--nx-surface-2)] px-[12px] py-[8px]">
+                  <span className="nx-label !text-[var(--nx-text)] mr-[8px]">{item.authorName}</span>
+                  {item.body}
+                </li>
+              ))}
+            </ul>
+          )}
           {row.status === 'PENDING_CLIENT_APPROVAL' && (
-            <>
+            <div className="mt-[16px] pt-[16px] nx-rule flex flex-col gap-[10px]">
               <textarea
-                className={areaClass + ' mt-[8px]'}
-                placeholder="Comment (required for changes / rejection)"
+                className={areaClass}
+                placeholder="Commento (obbligatorio per chiedere modifiche o rifiutare)"
                 value={comments[row.id] || ''}
                 onChange={(e) =>
                   setComments((current) => ({
@@ -338,26 +554,35 @@ export const PortalApprovals = () => {
                   }))
                 }
               />
-              <div className="flex gap-[8px] mt-[8px] flex-wrap">
-                <Button onClick={() => act(row.id, 'APPROVED')}>Approve</Button>
-                <Button
-                  secondary={true}
-                  onClick={() => act(row.id, 'CHANGES_REQUESTED')}
-                >
-                  Request changes
-                </Button>
-                <Button
-                  className="bg-red-700"
+              {errors[row.id] && (
+                <div role="alert" className="text-[13px] text-[var(--nx-bad)]">
+                  {errors[row.id]}
+                </div>
+              )}
+              <div className="grid grid-cols-2 sm:flex gap-[8px]">
+                <button type="button" className="nx-btn" onClick={() => act(row.id, 'CHANGES_REQUESTED')}>
+                  Richiedi modifiche
+                </button>
+                <button type="button" data-variant="primary" className="nx-btn" onClick={() => act(row.id, 'APPROVED')}>
+                  Approva
+                </button>
+                <button
+                  type="button"
+                  className="nx-btn col-span-2 sm:col-span-1 !border-transparent !text-[var(--nx-bad)] hover:!border-[var(--nx-bad)]"
                   onClick={() => act(row.id, 'REJECTED')}
                 >
-                  Reject
-                </Button>
+                  Rifiuta
+                </button>
               </div>
-            </>
+            </div>
           )}
-        </NeptiveCard>
+        </section>
       ))}
-      {!data?.length && <NeptiveEmpty>Nothing to approve</NeptiveEmpty>}
+      {!rows.length && (
+        <NeptiveCard>
+          <NeptiveEmpty>Niente da approvare.</NeptiveEmpty>
+        </NeptiveCard>
+      )}
     </div>
   );
 };
@@ -365,22 +590,39 @@ export const PortalApprovals = () => {
 export const PortalList = ({
   path,
   title,
+  eyebrow,
+  intro,
+  empty = 'Niente da mostrare per ora.',
   render,
 }: {
   path: string;
   title: string;
+  eyebrow: string;
+  intro?: string;
+  empty?: string;
   render: (row: any) => React.ReactNode;
 }) => {
   const { data } = useNeptivePortal(path);
   const rows = Array.isArray(data) ? data : data?.posts || [];
   return (
-    <NeptiveCard title={title}>
-      {rows.map((row: any) => (
-        <div key={row.id || row.integrationId} className="py-[8px] border-b border-newTableBorder">
-          {render(row)}
-        </div>
-      ))}
-      {!rows.length && <NeptiveEmpty>Nothing to show</NeptiveEmpty>}
-    </NeptiveCard>
+    <div className="flex flex-col">
+      <PortalHeader eyebrow={eyebrow} title={title}>
+        {intro && <p className="text-[15px] text-[var(--nx-text-muted)]">{intro}</p>}
+      </PortalHeader>
+      <section className="nx-card px-[16px] md:px-[22px] min-w-0">
+        <ul className="flex flex-col divide-y divide-[var(--nx-line)]">
+          {rows.map((row: any) => (
+            <li key={row.id || row.integrationId} className="py-[16px] min-w-0">
+              {render(row)}
+            </li>
+          ))}
+        </ul>
+        {!rows.length && (
+          <div className="py-[16px]">
+            <NeptiveEmpty>{empty}</NeptiveEmpty>
+          </div>
+        )}
+      </section>
+    </div>
   );
 };

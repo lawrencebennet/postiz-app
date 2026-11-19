@@ -1,0 +1,699 @@
+/* Neptive Social Portal: global theme.
+ * Loaded once, by the brand theme module that replaces the upstream font module (theme.ts).
+ * Sections: 1 tokens · 2 upstream theme variables per colour mode · 3 base typography · 4 upstream
+ * components on accent surfaces · 5 app shell (sidebar, top bar) · 6 hidden upstream marketing
+ * · 7 Neptive component classes (nx-*), used by the portal, the auth pages and the agency pages.
+ *
+ * Colour values come from the Neptive Studio palette (lamalama reference): ink 26 28 28, off-white
+ * 249 244 235, green 208 255 126, pink 255 198 218, blue 220 242 244, red 231 93 96.
+ * Upstream brand colours hard-coded in Tailwind classes are rewritten to the --nx-*-rgb variables below
+ * by neptive/brand/postcss/neptive-theme.cjs.
+ */
+
+/* ------------------------------------------------------------------ 1 tokens */
+:root {
+  --nx-ink-rgb: 26 28 28;
+  --nx-black-rgb: 14 15 15;
+  --nx-off-rgb: 249 244 235;
+  --nx-green-rgb: 208 255 126;
+  --nx-pink-rgb: 255 198 218;
+  --nx-blue-rgb: 220 242 244;
+  --nx-red-rgb: 231 93 96;
+  --nx-ink: rgb(var(--nx-ink-rgb));
+  --nx-off: rgb(var(--nx-off-rgb));
+  --nx-green: rgb(var(--nx-green-rgb));
+  --nx-pink: rgb(var(--nx-pink-rgb));
+  --nx-blue: rgb(var(--nx-blue-rgb));
+  --nx-red: rgb(var(--nx-red-rgb));
+  --nx-r: 4px;
+  --nx-r-lg: 6px;
+  --nx-ease: cubic-bezier(0.22, 0.7, 0.2, 1);
+}
+
+/* ------------------------------------------------------------------ 2 colour modes
+ * Selectors are one step more specific than upstream's `:root .dark` / `:root .light`
+ * (apps/frontend/src/app/colors.scss), so they win whatever the stylesheet order. */
+html:root .dark {
+  /* Neptive roles */
+  --nx-bg: #121414;
+  --nx-surface: #1a1c1c;
+  --nx-surface-2: #212423;
+  --nx-line: #2c2f2e;
+  --nx-line-strong: #3d413f;
+  --nx-text: rgb(var(--nx-off-rgb));
+  --nx-text-muted: #a3a099;
+  --nx-text-faint: #75736e;
+  --nx-accent-rgb: var(--nx-green-rgb);
+  --nx-on-accent: rgb(var(--nx-ink-rgb));
+  --nx-signal-rgb: var(--nx-pink-rgb);
+  --nx-soft-rgb: 47 51 50;
+  --nx-good: rgb(var(--nx-green-rgb));
+  --nx-good-bg: rgb(var(--nx-green-rgb) / 0.1);
+  --nx-warn: #f3d27a;
+  --nx-warn-bg: rgb(243 210 122 / 0.1);
+  --nx-bad: #f2898b;
+  --nx-bad-bg: rgb(var(--nx-red-rgb) / 0.12);
+  --nx-primary-bg: rgb(var(--nx-off-rgb));
+  --nx-primary-text: rgb(var(--nx-ink-rgb));
+
+  /* upstream variables (colors.scss) */
+  --new-back-drop: #0e0f0f;
+  --new-settings: #232625;
+  --new-border: #2c2f2e;
+  --new-bgColor: #121414;
+  --new-bgColorInner: #1a1c1c;
+  --new-sep: #3d413f;
+  --new-bgLineColor: #262928;
+  --new-textItemFocused: #1a1c1c;
+  --new-textItemBlur: #a3a099;
+  --new-boxFocused: #f9f4eb;
+  --new-textColor: 249 244 235;
+  --new-blockSeparator: #2c2f2e;
+  --new-btn-simple: #2a2d2c;
+  --new-btn-text: #f9f4eb;
+  --new-btn-primary: #d0ff7e;
+  --new-ai-btn: #ffc6da;
+  --new-box-hover: #232625;
+  --new-table-border: #2c2f2e;
+  --new-table-header: #1f2221;
+  --new-table-text: #a3a099;
+  --new-table-text-focused: #d0ff7e;
+  --new-small-strips: #161818;
+  --new-big-strips: #161818;
+  --new-col-color: #2a2d2c;
+  --new-menu-dots: #8a8780;
+  --new-menu-hover: #f9f4eb;
+  --menu-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.45);
+  --popup-color: rgba(14, 15, 15, 0.6);
+
+  --color-primary: #121414;
+  --color-secondary: #1a1c1c;
+  --color-text: #f9f4eb;
+  --color-third: #1a1c1c;
+  --color-forth: #d0ff7e;
+  --color-seventh: #d0ff7e;
+  --color-gray: #8a8780;
+  --color-input-text: #a3a099;
+  --color-custom1: #2f3332;
+  --color-custom2: #161818;
+  --color-custom3: #121414;
+  --color-custom4: #d0ff7e;
+  --color-custom7: #d0ff7e;
+  --color-custom9: #333736;
+  --color-custom11: #dcf2f4;
+  --color-custom12: #dcf2f4;
+  --color-custom14: #5e625f;
+  --color-custom16: #161818;
+  --color-custom20: #161818;
+  --color-custom21: #5e625f;
+  --color-custom28: #dcf2f4;
+  --color-custom29: #232625;
+  --color-custom30: #d0ff7e;
+  --color-custom31: #121414;
+  --color-custom41: #dcf2f4;
+  --color-custom43: #4a4e4c;
+  --color-custom44: #2f3332;
+  --color-custom45: #d0ff7e;
+  --color-custom46: #6e726f;
+  --color-custom47: #1a1c1c;
+  --color-custom48: #0e0f0f;
+  --color-custom49: #0e0f0f;
+  --color-custom50: #232625;
+  --color-custom51: #d0ff7e;
+  --color-custom55: #232625;
+}
+
+html:root .light {
+  --nx-bg: #eee8dc;
+  --nx-surface: #f9f4eb;
+  --nx-surface-2: #f2ece1;
+  --nx-line: #e1dacd;
+  --nx-line-strong: #cfc7b8;
+  --nx-text: rgb(var(--nx-ink-rgb));
+  --nx-text-muted: #66635e;
+  --nx-text-faint: #8d8a83;
+  --nx-accent-rgb: var(--nx-ink-rgb);
+  --nx-on-accent: rgb(var(--nx-off-rgb));
+  --nx-signal-rgb: 178 52 102;
+  --nx-soft-rgb: 233 227 215;
+  --nx-good: #3c6b00;
+  --nx-good-bg: rgb(var(--nx-green-rgb) / 0.45);
+  --nx-warn: #8a5a00;
+  --nx-warn-bg: rgb(243 210 122 / 0.35);
+  --nx-bad: #b3373a;
+  --nx-bad-bg: rgb(var(--nx-red-rgb) / 0.14);
+  --nx-primary-bg: rgb(var(--nx-ink-rgb));
+  --nx-primary-text: rgb(var(--nx-off-rgb));
+
+  --new-back-drop: #1a1c1c;
+  --new-settings: #efe9de;
+  --new-border: #e1dacd;
+  --new-bgColor: #eee8dc;
+  --new-bgColorInner: #f9f4eb;
+  --new-sep: #d3cbbd;
+  --new-bgLineColor: #e1dacd;
+  --new-textItemFocused: #f9f4eb;
+  --new-textItemBlur: #66635e;
+  --new-boxFocused: #1a1c1c;
+  --new-textColor: 26 28 28;
+  --new-blockSeparator: #e8e2d6;
+  --new-btn-simple: #e8e2d6;
+  --new-btn-text: #1a1c1c;
+  --new-btn-primary: #1a1c1c;
+  --new-ai-btn: #ffc6da;
+  --new-box-hover: #f1ebe0;
+  --new-table-border: #e1dacd;
+  --new-table-header: #f3eee4;
+  --new-table-text: #66635e;
+  --new-table-text-focused: #1a1c1c;
+  --new-small-strips: #e8e2d6;
+  --new-big-strips: #f3eee4;
+  --new-col-color: #eee8dc;
+  --new-menu-dots: #66635e;
+  --new-menu-hover: #1a1c1c;
+  --menu-shadow: 0 10px 30px 0 rgba(26, 28, 28, 0.12);
+  --popup-color: rgba(26, 28, 28, 0.28);
+  --border-preview: #e1dacd;
+
+  --color-primary: #eee8dc;
+  --color-secondary: #f9f4eb;
+  --color-text: #1a1c1c;
+  --color-third: #f9f4eb;
+  --color-forth: #1a1c1c;
+  --color-seventh: #1a1c1c;
+  --color-gray: #8d8a83;
+  --color-input-text: #66635e;
+  --color-table-border: #e1dacd;
+  --color-custom2: #f3eee4;
+  --color-custom3: #f9f4eb;
+  --color-custom4: #1a1c1c;
+  --color-custom7: #1a1c1c;
+  --color-custom11: #3b6e74;
+  --color-custom12: #3b6e74;
+  --color-custom20: #f3eee4;
+  --color-custom23: #f3eee4;
+  --color-custom28: #3b6e74;
+  --color-custom29: #e8e2d6;
+  --color-custom30: #e8e2d6;
+  --color-custom31: #e8e2d6;
+  --color-custom41: #3b6e74;
+  --color-custom45: #1a1c1c;
+  --color-custom48: #f9f4eb;
+  --color-custom50: #e8e2d6;
+  --color-custom51: #1a1c1c;
+  --color-custom55: #e1dacd;
+}
+
+/* ------------------------------------------------------------------ 3 base typography */
+/* on body: the next/font variables (--nx-font-*) are set by the font classes on <body> */
+body {
+  --nx-sans: var(--nx-font-sans), 'Helvetica Neue', Arial, sans-serif;
+  --nx-mono: var(--nx-font-mono), ui-monospace, Menlo, monospace;
+  font-family: var(--nx-sans);
+  font-optical-sizing: auto;
+  letter-spacing: -0.006em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+.font-sans,
+div div .set-font-family {
+  font-family: var(--nx-sans) !important;
+}
+::selection {
+  background: rgb(var(--nx-green-rgb));
+  color: rgb(var(--nx-ink-rgb));
+}
+
+/* ------------------------------------------------------------------ 4 accent surfaces
+ * Upstream puts white text on its purple. In dark mode the Neptive accent is the light green, so text and
+ * white icons on accent surfaces switch to ink. `[class~=...]` matches the whole class only (not the /10
+ * tints or hover: variants). */
+html:root .dark :is(.bg-btnPrimary, .bg-forth, .bg-seventh, .bg-customColor4, .bg-customColor45,
+    [class~='bg-[#612BD3]'], [class~='bg-[#612bd3]'], [class~='!bg-[#612BD3]'], [class~='bg-[#612AD5]'],
+    [class~='bg-[#9333ea]']),
+html:root :is(.dark, .light) :is(.bg-ai, [class~='bg-[#FC69FF]'], [class~='bg-[#fc69ff]']) {
+  color: var(--nx-on-accent) !important;
+}
+html:root .light :is(.bg-ai, [class~='bg-[#FC69FF]'], [class~='bg-[#fc69ff]']) {
+  color: rgb(var(--nx-ink-rgb)) !important;
+}
+html:root .dark :is(.bg-btnPrimary, .bg-forth, .bg-seventh, [class~='bg-[#612BD3]'], [class~='bg-[#612bd3]'],
+    [class~='bg-[#612AD5]']) :is(.text-white, [class*='text-white']),
+html:root :is(.dark, .light) :is(.bg-ai, [class~='bg-[#FC69FF]']) :is(.text-white, [class*='text-white']) {
+  color: inherit !important;
+}
+html:root .dark :is(.bg-btnPrimary, .bg-forth, .bg-seventh, [class~='bg-[#612BD3]'], [class~='bg-[#612bd3]'],
+    [class~='bg-[#612AD5]'], .bg-ai) svg :is([stroke='white'], [stroke='#fff'], [stroke='#FFF'], [stroke='#ffffff']),
+html:root .light .bg-ai svg [stroke='white'] {
+  stroke: currentColor;
+}
+html:root .dark :is(.bg-btnPrimary, .bg-forth, .bg-seventh, [class~='bg-[#612BD3]'], [class~='bg-[#612bd3]'],
+    [class~='bg-[#612AD5]'], .bg-ai) svg :is([fill='white'], [fill='#fff'], [fill='#FFF'], [fill='#ffffff']),
+html:root .light .bg-ai svg [fill='white'] {
+  fill: currentColor;
+}
+/* upstream purple / pink in SVG attributes (icons, illustrations): rules generated by the theme plugin */
+/* neptive-svg-colours */
+
+/* the shared upstream <Button>: flatter, mono label like the reference buttons */
+button.bg-forth,
+button.bg-third,
+button.bg-btnPrimary {
+  border-radius: var(--nx-r);
+  letter-spacing: 0;
+  transition: background-color 160ms var(--nx-ease), color 160ms var(--nx-ease), opacity 160ms var(--nx-ease);
+}
+html:root .dark button.bg-forth:not(:disabled):hover,
+html:root .dark button.bg-btnPrimary:not(:disabled):hover {
+  background-color: rgb(var(--nx-off-rgb));
+}
+
+/* ------------------------------------------------------------------ 5 app shell */
+#left-menu a,
+#left-menu button {
+  border-radius: var(--nx-r);
+}
+#left-menu a > div:last-child,
+#left-menu button > div:last-child {
+  font-family: var(--nx-mono);
+  font-weight: 500;
+  font-size: 9.5px;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+/* page title in the top bar: the reference's heading, scaled for an app */
+.blurMe > .relative:first-child h1 {
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.035em;
+  text-transform: uppercase;
+}
+@media (max-width: 1025px) {
+  .blurMe > .relative:first-child h1 {
+    font-size: 20px;
+  }
+}
+/* the panels of the shell: flat, square-ish */
+.blurMe,
+.blurMe ~ *,
+#left-menu {
+  --tw-ring-color: rgb(var(--nx-accent-rgb));
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  box-shadow: 0 0 0 1px rgb(var(--nx-accent-rgb) / 0.6);
+}
+
+/* superadmin tool bar (upstream layout/impersonate.tsx): neutral surface, tools as small outline buttons */
+html:root :is(.dark, .light) .bg-forth.h-\[52px\].border-input {
+  background: var(--nx-surface) !important;
+  color: var(--nx-text) !important;
+  border-color: var(--nx-line) !important;
+  border-radius: var(--nx-r);
+}
+html:root :is(.dark, .light) .bg-forth.h-\[52px\].border-input :is(.bg-green-700, .bg-blue-700, .bg-purple-700, .bg-yellow-600, .bg-red-500) {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
+  background: transparent !important;
+  border: 1px solid var(--nx-line-strong);
+  color: var(--nx-text) !important;
+  font-family: var(--nx-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+html:root :is(.dark, .light) .bg-forth.h-\[52px\].border-input .bg-red-500 {
+  border-color: var(--nx-bad);
+  color: var(--nx-bad) !important;
+}
+
+/* upstream forms rendered inside the Neptive auth frame (forgot / reset password, activation) */
+.nx-auth h1:not(.nx-display) {
+  font-size: 30px !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+  margin-bottom: 18px;
+}
+.nx-auth .bg-newBgColorInner.h-\[42px\] {
+  height: 48px;
+  background: transparent;
+  border-color: var(--nx-line-strong);
+  border-radius: var(--nx-r);
+}
+.nx-auth .bg-newBgColorInner.h-\[42px\]:focus-within {
+  border-color: var(--nx-text);
+}
+.nx-auth .bg-newBgColorInner.h-\[42px\] input {
+  font-size: 15px;
+}
+.nx-auth .flex.flex-col.gap-\[6px\] > .text-\[14px\] {
+  font-family: var(--nx-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--nx-text-muted);
+}
+.nx-auth button.bg-forth {
+  height: 48px !important;
+  border-radius: var(--nx-r) !important;
+  background: var(--nx-primary-bg);
+  color: var(--nx-primary-text) !important;
+  font-family: var(--nx-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+.nx-auth button.bg-forth:hover {
+  background: rgb(var(--nx-green-rgb));
+  color: rgb(var(--nx-ink-rgb)) !important;
+}
+.nx-auth a.underline {
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  color: var(--nx-text-muted);
+}
+.nx-auth a.underline:hover {
+  color: var(--nx-text);
+}
+
+/* ------------------------------------------------------------------ 6 upstream marketing links
+ * Help, community and marketing links to the upstream project. Removed from view where they appear in
+ * screens Neptive keeps (settings, public API, onboarding); the brand check lists every occurrence. */
+a[href*='postiz.com'],
+a[href*='postiz.pro'],
+a[href*='gitroomhq'],
+a[href*='n8n-nodes-postiz'],
+a[href*='chromewebstore.google.com/detail/postiz'],
+a[href*='discord.postiz'],
+a[href*='youtube.com/@postiz' i] {
+  display: none !important;
+}
+
+/* ------------------------------------------------------------------ 7 Neptive components (nx-*) */
+.nx-mono {
+  font-family: var(--nx-mono);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.nx-label {
+  font-family: var(--nx-mono);
+  font-size: 10.5px;
+  line-height: 1.6;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--nx-text-muted);
+}
+.nx-display {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.035em;
+  line-height: 0.88;
+}
+.nx-heading {
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
+}
+.nx-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 2px;
+  font-family: var(--nx-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: var(--nx-surface-2);
+  color: var(--nx-text);
+}
+.nx-tag[data-tone='good'] {
+  background: var(--nx-good-bg);
+  color: var(--nx-good);
+}
+.nx-tag[data-tone='warn'] {
+  background: var(--nx-warn-bg);
+  color: var(--nx-warn);
+}
+.nx-tag[data-tone='bad'] {
+  background: var(--nx-bad-bg);
+  color: var(--nx-bad);
+}
+.nx-tag[data-tone='solid'] {
+  background: rgb(var(--nx-green-rgb));
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-card {
+  background: var(--nx-surface);
+  border: 1px solid var(--nx-line);
+  border-radius: var(--nx-r-lg);
+}
+.nx-rule {
+  border-top: 1px solid var(--nx-line);
+}
+.nx-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: var(--nx-r);
+  border: 1px solid var(--nx-line-strong);
+  background: transparent;
+  color: var(--nx-text);
+  font-family: var(--nx-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 160ms var(--nx-ease), border-color 160ms var(--nx-ease), color 160ms var(--nx-ease),
+    opacity 160ms var(--nx-ease);
+}
+.nx-btn:hover:not(:disabled) {
+  border-color: var(--nx-text);
+}
+.nx-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.nx-btn[data-variant='primary'] {
+  background: var(--nx-primary-bg);
+  color: var(--nx-primary-text);
+  border-color: var(--nx-primary-bg);
+}
+.nx-btn[data-variant='primary']:hover:not(:disabled) {
+  background: rgb(var(--nx-green-rgb));
+  border-color: rgb(var(--nx-green-rgb));
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-btn[data-size='sm'] {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 10.5px;
+}
+.nx-btn .nx-arrow {
+  font-family: var(--nx-sans);
+  font-size: 14px;
+  line-height: 1;
+}
+.nx-input,
+.nx-textarea {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--nx-line-strong);
+  border-radius: var(--nx-r);
+  color: var(--nx-text);
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  outline: none;
+  transition: border-color 160ms var(--nx-ease);
+}
+.nx-input {
+  height: 48px;
+  padding: 0 14px;
+}
+.nx-textarea {
+  min-height: 92px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+.nx-input::placeholder,
+.nx-textarea::placeholder {
+  color: var(--nx-text-faint);
+}
+.nx-input:focus,
+.nx-textarea:focus {
+  border-color: var(--nx-text);
+}
+.nx-link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+  transition: text-decoration-color 160ms var(--nx-ease);
+}
+.nx-link:hover {
+  text-decoration-color: currentColor;
+}
+/* banners inside a PED slot (state of the selected variant) */
+.nx-banner {
+  border-radius: var(--nx-r);
+  padding: 11px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  border: 1px solid var(--nx-line);
+  color: var(--nx-text-muted);
+}
+.nx-banner strong {
+  color: var(--nx-text);
+  font-weight: 600;
+}
+.nx-banner[data-tone='good'] {
+  background: rgb(var(--nx-green-rgb));
+  border-color: rgb(var(--nx-green-rgb));
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-banner[data-tone='good'] strong {
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-banner[data-tone='bad'] {
+  background: var(--nx-bad-bg);
+  border-color: transparent;
+  color: var(--nx-bad);
+}
+.nx-banner[data-tone='bad'] strong {
+  color: var(--nx-bad);
+}
+.nx-banner[data-tone='receded'] {
+  border-style: dashed;
+}
+
+/* PED slot: the confirmed one carries a green rule on its left edge */
+.nx-slot--confirmed {
+  box-shadow: inset 4px 0 0 rgb(var(--nx-green-rgb));
+}
+
+/* variant switcher chips A / B / C ... */
+.nx-chip {
+  position: relative;
+  min-height: 60px;
+  padding: 6px 4px 7px;
+  border-radius: var(--nx-r);
+  border: 1px solid var(--nx-line-strong);
+  background: transparent;
+  color: var(--nx-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: background-color 160ms var(--nx-ease), border-color 160ms var(--nx-ease), color 160ms var(--nx-ease),
+    opacity 160ms var(--nx-ease), transform 160ms var(--nx-ease);
+}
+.nx-chip:hover {
+  border-color: var(--nx-text);
+}
+.nx-chip__label {
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 0.9;
+  letter-spacing: -0.03em;
+}
+.nx-chip__state {
+  font-family: var(--nx-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--nx-text-muted);
+}
+.nx-chip--review .nx-chip__state {
+  color: var(--nx-warn);
+}
+.nx-chip--changes .nx-chip__state {
+  color: var(--nx-bad);
+}
+.nx-chip--confirmed {
+  background: rgb(var(--nx-green-rgb));
+  border-color: rgb(var(--nx-green-rgb));
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-chip--confirmed .nx-chip__state {
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-chip--receded,
+.nx-chip--pending {
+  border-style: dashed;
+  color: var(--nx-text-muted);
+}
+.nx-chip--receded:not(.nx-chip--selected) {
+  opacity: 0.6;
+}
+/* selected = the one shown below: inverted, with an underline mark */
+.nx-chip--selected {
+  background: var(--nx-text);
+  border-color: var(--nx-text);
+  border-style: solid;
+  color: var(--nx-bg);
+}
+.nx-chip--selected .nx-chip__state {
+  color: var(--nx-bg);
+}
+.nx-chip--selected.nx-chip--confirmed {
+  background: rgb(var(--nx-green-rgb));
+  border-color: var(--nx-text);
+  box-shadow: 0 0 0 1px var(--nx-text);
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-chip--selected.nx-chip--confirmed .nx-chip__state {
+  color: rgb(var(--nx-ink-rgb));
+}
+.nx-chip--selected::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 8px;
+  height: 8px;
+  background: var(--nx-text);
+  transform: translateX(-50%) rotate(45deg);
+}
+.nx-chip--selected.nx-chip--confirmed::after {
+  background: var(--nx-text);
+}
+
+.nx-fade-in {
+  animation: nx-fade 260ms var(--nx-ease) both;
+}
+@keyframes nx-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nx-fade-in {
+    animation: none;
+  }
+}

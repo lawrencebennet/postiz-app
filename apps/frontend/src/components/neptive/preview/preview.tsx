@@ -14,7 +14,7 @@ import {
   normalizePreviewIdentity,
   type PreviewIdentity,
 } from '@gitroom/nestjs-libraries/neptive/domain/preview-identity';
-import { NeptiveBadge, formatWhen, statusTone } from '@gitroom/frontend/components/neptive/neptive.ui';
+import { NeptiveBadge, formatWhen, statusLabel, statusTone } from '@gitroom/frontend/components/neptive/neptive.ui';
 
 const initials = (name: string) =>
   name
@@ -139,7 +139,7 @@ const Caption: FC<{ text: string; dark?: boolean }> = ({ text, dark = false }) =
 );
 
 export const InstagramPreviewCard: FC<{ model: PlatformPreviewModel }> = ({ model }) => (
-  <div className="mx-auto w-full max-w-[430px] overflow-hidden rounded-[14px] bg-[#101010] text-white shadow-2xl ring-1 ring-white/10">
+  <div className="mx-auto w-full max-w-[430px] overflow-hidden rounded-[6px] bg-[#101010] text-white ring-1 ring-white/10">
     <div className="p-[14px]">
       <ProfileHeader name={model.profile.name} image={model.profile.image} eyebrow="Instagram" dark />
     </div>
@@ -152,7 +152,7 @@ export const FacebookPreviewCard: FC<{
   model: PlatformPreviewModel;
   onOpenDetail: () => void;
 }> = ({ model, onOpenDetail }) => (
-  <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-[14px] bg-white text-slate-900 shadow-2xl ring-1 ring-black/10">
+  <div className="mx-auto w-full max-w-[560px] overflow-hidden rounded-[6px] bg-white text-slate-900 ring-1 ring-black/10">
     <div className="p-[16px] pb-[10px]">
       <ProfileHeader name={model.profile.name} image={model.profile.image} eyebrow="Pagina Facebook" />
     </div>
@@ -166,12 +166,12 @@ export const FacebookPreviewDetail: FC<{
   model: PlatformPreviewModel;
   onBack: () => void;
 }> = ({ model, onBack }) => (
-  <div className="mx-auto w-full max-w-[700px] overflow-hidden rounded-[14px] bg-white text-slate-900 shadow-2xl ring-1 ring-black/10">
+  <div className="mx-auto w-full max-w-[700px] overflow-hidden rounded-[6px] bg-white text-slate-900 ring-1 ring-black/10">
     <div className="flex items-center gap-[10px] border-b border-slate-200 p-[14px]"><button type="button" onClick={onBack} className="text-[22px] text-slate-500" aria-label="Torna alla preview Facebook">‹</button><span className="text-[14px] font-[700]">Dettaglio post Facebook</span></div>
     <div className="p-[16px]"><ProfileHeader name={model.profile.name} image={model.profile.image} eyebrow={`Pubblicazione · ${formatWhen(model.scheduledAt)}`} /></div>
     <div className="px-[16px] pb-[16px]"><Caption text={model.caption} /></div>
     <PreviewMediaCarousel media={model.media} label="Facebook post detail preview" />
-    <div className="p-[16px]"><NeptiveBadge tone={statusTone(model.publishingState)}>{model.publishingState}</NeptiveBadge></div>
+    <div className="p-[16px]"><NeptiveBadge tone={statusTone(model.publishingState)}>{statusLabel(model.publishingState)}</NeptiveBadge></div>
   </div>
 );
 
@@ -188,11 +188,28 @@ export const PlatformPreviewSwitcher: FC<{
   useEffect(() => setFacebookDetail(false), [content.postGroup]);
 
   return (
-    <div className="flex flex-col gap-[12px]">
+    <div className="flex flex-col gap-[12px] min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-[8px]">
-        <div><div className="text-[11px] uppercase tracking-[0.1em] text-newTableText">Anteprima piattaforma</div><div className="text-[13px] text-newTableText">Il media e il testo arrivano dal contenuto Neptive collegato.</div></div>
-        <div className="flex rounded-[8px] bg-newBgColorInner p-[3px]" role="tablist" aria-label="Scegli anteprima">
-          {(['instagram', 'facebook'] as PreviewPlatform[]).map((item) => <button key={item} type="button" role="tab" aria-selected={platform === item} onClick={() => { setPlatform(item); setFacebookDetail(false); }} className={clsx('rounded-[6px] px-[10px] py-[7px] text-[11px] font-[700]', platform === item ? 'bg-boxFocused text-textItemFocused' : 'text-newTableText')}>{item === 'instagram' ? 'Instagram preview' : 'Facebook preview'}</button>)}
+        <div className="nx-label">Anteprima</div>
+        <div className="flex rounded-[var(--nx-r)] border border-[var(--nx-line)] p-[3px]" role="tablist" aria-label="Scegli anteprima">
+          {(['instagram', 'facebook'] as PreviewPlatform[]).map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="tab"
+              aria-selected={platform === item}
+              onClick={() => {
+                setPlatform(item);
+                setFacebookDetail(false);
+              }}
+              className={clsx(
+                'nx-mono rounded-[2px] px-[10px] h-[28px] text-[10.5px] uppercase tracking-[0.03em] transition-colors',
+                platform === item ? 'bg-[var(--nx-text)] text-[var(--nx-bg)]' : 'text-[var(--nx-text-muted)] hover:text-[var(--nx-text)]'
+              )}
+            >
+              {item === 'instagram' ? 'Instagram' : 'Facebook'}
+            </button>
+          ))}
         </div>
       </div>
       {platform === 'instagram' ? <InstagramPreviewCard model={model} /> : facebookDetail ? <FacebookPreviewDetail model={facebookModel} onBack={() => setFacebookDetail(false)} /> : <FacebookPreviewCard model={facebookModel} onOpenDetail={() => setFacebookDetail(true)} />}

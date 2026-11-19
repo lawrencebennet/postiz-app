@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
 
 export default function Layout({ children }: { children: ReactNode }) {
-  return <div className="min-h-screen bg-newBgColor">{children}</div>;
+  return <div className="min-h-screen bg-[var(--nx-bg)]">{children}</div>;
 }

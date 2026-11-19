@@ -1,0 +1,40 @@
+{
+  "$comment": "Single source of the Neptive brand for the white-label layer. Read by: the Next build (neptive/brand/next), the backend email/error branding (brand.ts), the brand check (neptive/scripts/brand-check.mjs). See neptive/WHITE-LABEL.md.",
+  "name": "Neptive Social Portal",
+  "shortName": "Neptive",
+  "upperName": "NEPTIVE",
+  "agency": "Neptive",
+  "website": "https://neptive.com",
+  "supportEmail": "info@neptive.com",
+  "replace": {
+    "words": {
+      "Postiz": "Neptive",
+      "POSTIZ": "NEPTIVE",
+      "Gitroom": "Neptive",
+      "GitRoom": "Neptive"
+    }
+  },
+  "assets": {
+    "/postiz.svg": "/neptive/brand/mark.svg",
+    "/postiz-fav.png": "/neptive/brand/icon-192.png",
+    "/postiz-text.svg": "/neptive/brand/wordmark.svg",
+    "/logo.svg": "/neptive/brand/mark.svg",
+    "/logo-text.svg": "/neptive/brand/wordmark.svg",
+    "/favicon.ico": "/neptive/brand/favicon.ico",
+    "/favicon.png": "/neptive/brand/icon-192.png",
+    "/auth/login-box.png": "/neptive/brand/blank.png",
+    "/auth/bg-login.png": "/neptive/brand/blank.png"
+  },
+  "palette": {
+    "ink": "#1A1C1C",
+    "black": "#0E0F0F",
+    "offWhite": "#F9F4EB",
+    "green": "#D0FF7E",
+    "pink": "#FFC6DA",
+    "blue": "#DCF2F4",
+    "red": "#E75D60"
+  },
+  "email": {
+    "fromName": "Neptive Social Portal"
+  }
+}

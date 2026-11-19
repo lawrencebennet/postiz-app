@@ -2,13 +2,14 @@
 
 import { FC, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import clsx from 'clsx';
-import { Button } from '@gitroom/react/form/button';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import {
   NeptiveBadge,
   areaClass,
   fieldClass,
+  kindLabel,
   postPreviewText,
+  statusLabel,
 } from '@gitroom/frontend/components/neptive/neptive.ui';
 import {
   PedCalendarItem,
@@ -45,11 +46,14 @@ const stateOf = (variant?: PedVariant | null) =>
   VARIANT_STATES[variant?.state || 'IN_PREPARATION'] ||
   VARIANT_STATES.IN_PREPARATION;
 
-const CHIP_TONE: Record<Tone, string> = {
-  warn: 'border-amber-400/70 text-amber-200',
-  bad: 'border-red-400/70 text-red-300',
-  good: 'border-green-400 text-green-300 bg-green-900/30',
-  neutral: 'border-newTableBorder text-newTableText',
+// state of a variant chip: the confirmed one is solid green, the others outlined; the receded ones dashed
+const CHIP_STATE: Record<string, string> = {
+  CONFIRMED: 'nx-chip--confirmed',
+  CHANGES_REQUESTED: 'nx-chip--changes',
+  NOT_CHOSEN: 'nx-chip--receded',
+  REJECTED: 'nx-chip--receded',
+  TO_REVIEW: 'nx-chip--review',
+  IN_PREPARATION: 'nx-chip--pending',
 };
 
 const STATE_ICON: Record<string, string> = {
@@ -128,7 +132,7 @@ export const VariantSwitcher: FC<{
   <div
     role="tablist"
     aria-label="Varianti di questo contenuto"
-    className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-[6px]"
+    className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-[6px] min-w-0"
   >
     {variants.map((variant) => {
       const meta = stateOf(variant);
@@ -142,20 +146,11 @@ export const VariantSwitcher: FC<{
           aria-selected={selected}
           aria-label={`Variante ${variant.label}: ${meta.long}`}
           onClick={() => onSelect(variant.id)}
-          className={clsx(
-            'min-h-[52px] rounded-[10px] border px-[4px] py-[5px] flex flex-col items-center justify-center gap-[2px] transition-colors',
-            CHIP_TONE[meta.tone],
-            selected
-              ? 'ring-2 ring-textColor ring-offset-2 ring-offset-newBgColorInner'
-              : 'hover:bg-newBoxHover',
-            variant.state === 'NOT_CHOSEN' && !selected && 'opacity-55'
-          )}
+          className={clsx('nx-chip', CHIP_STATE[variant.state] || 'nx-chip--pending', selected && 'nx-chip--selected')}
         >
-          <span className="text-[17px] font-[800] leading-none text-textColor">
-            {variant.label}
-          </span>
-          <span className="text-[10px] font-[600] leading-tight whitespace-nowrap">
-            {STATE_ICON[variant.state] || ''} {meta.short}
+          <span className="nx-chip__label">{variant.label}</span>
+          <span className="nx-chip__state">
+            <span aria-hidden="true">{STATE_ICON[variant.state] || ''}</span> {meta.short}
           </span>
         </button>
       );
@@ -166,9 +161,7 @@ export const VariantSwitcher: FC<{
 // ---------------------------------------------------------------- pieces
 
 const SectionLabel: FC<{ children: ReactNode }> = ({ children }) => (
-  <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText mb-[5px]">
-    {children}
-  </div>
+  <div className="nx-label mb-[7px]">{children}</div>
 );
 
 const Comments: FC<{
@@ -179,7 +172,7 @@ const Comments: FC<{
   const comments = variant.approval?.comments || [];
   if (!comments.length) {
     return (
-      <div className="text-[12px] text-newTableText">
+      <div className="text-[14px] text-[var(--nx-text-muted)]">
         {multiple ? 'Nessun commento su questa variante.' : 'Nessun commento.'}
       </div>
     );
@@ -190,17 +183,17 @@ const Comments: FC<{
         <li
           key={entry.id}
           className={clsx(
-            'rounded-[8px] px-[10px] py-[7px] text-[13px] break-words',
+            'rounded-[var(--nx-r)] px-[12px] py-[9px] text-[14px] leading-[1.45] break-words',
             entry.authorType === 'CLIENT_USER'
-              ? 'bg-newBgColor border border-newTableBorder'
-              : 'bg-boxFocused/40'
+              ? 'border border-[var(--nx-line-strong)]'
+              : 'bg-[var(--nx-surface-2)]'
           )}
         >
-          <div className="text-[11px] text-newTableText mb-[2px] flex flex-wrap gap-x-[6px]">
-            <span className="font-[700] text-textColor">{entry.authorName}</span>
+          <div className="nx-label mb-[3px] flex flex-wrap gap-x-[8px]">
+            <span className="!text-[var(--nx-text)]">{entry.authorName}</span>
             <span>{shortDateTime(entry.createdAt)}</span>
             {mode === 'agency' && entry.visibility === 'INTERNAL' && (
-              <span className="text-amber-200">interno</span>
+              <span className="!text-[var(--nx-warn)]">interno</span>
             )}
           </div>
           <div className="whitespace-pre-wrap">{entry.body}</div>
@@ -221,7 +214,7 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
   if ((item.variants || []).length < 2) {
     if (variant.state === 'CONFIRMED') {
       return (
-        <div className="rounded-[10px] border border-green-500/60 bg-green-900/25 px-[12px] py-[9px] text-[13px] text-green-200">
+        <div className="nx-banner" data-tone="good">
           <strong>Contenuto approvato</strong>
           {variant.approval?.approvedAt ? ` il ${shortDateTime(variant.approval.approvedAt)}` : ''}.
         </div>
@@ -229,7 +222,7 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
     }
     if (variant.state === 'CHANGES_REQUESTED') {
       return (
-        <div className="rounded-[10px] border border-red-400/50 bg-red-900/20 px-[12px] py-[9px] text-[13px] text-red-200">
+        <div className="nx-banner" data-tone="bad">
           <strong>Modifiche richieste.</strong> Neptive sta lavorando a questo contenuto.
         </div>
       );
@@ -238,7 +231,7 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
   }
   if (variant.state === 'CONFIRMED') {
     return (
-      <div className="rounded-[10px] border border-green-500/60 bg-green-900/25 px-[12px] py-[9px] text-[13px] text-green-200">
+      <div className="nx-banner" data-tone="good">
         <strong>Variante {variant.label} confermata</strong>
         {item.slot?.confirmedAt ? ` il ${shortDateTime(item.slot.confirmedAt)}` : ''}.
         {(item.variants || []).length > 1 &&
@@ -248,8 +241,8 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
   }
   if (variant.state === 'NOT_CHOSEN') {
     return (
-      <div className="rounded-[10px] border border-newTableBorder bg-newBgColor px-[12px] py-[9px] text-[13px] text-newTableText">
-        <strong className="text-textColor">Variante non scelta.</strong> È stata
+      <div className="nx-banner" data-tone="receded">
+        <strong>Variante non scelta.</strong> È stata
         confermata la variante {confirmed?.label || ''}: questa resta qui in sola
         lettura, con i suoi commenti.
       </div>
@@ -257,7 +250,7 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
   }
   if (variant.state === 'CHANGES_REQUESTED') {
     return (
-      <div className="rounded-[10px] border border-red-400/50 bg-red-900/20 px-[12px] py-[9px] text-[13px] text-red-200">
+      <div className="nx-banner" data-tone="bad">
         <strong>Modifiche richieste.</strong> Neptive sta lavorando a questa
         variante; puoi comunque valutare le altre.
       </div>
@@ -265,7 +258,7 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
   }
   if (variant.state === 'IN_PREPARATION') {
     return (
-      <div className="rounded-[10px] border border-newTableBorder px-[12px] py-[9px] text-[13px] text-newTableText">
+      <div className="nx-banner" data-tone="receded">
         Questa variante non è ancora pronta per la tua approvazione.
       </div>
     );
@@ -327,7 +320,7 @@ const ClientComment: FC<{
       </label>
       <textarea
         id={`comment-${variant.id}`}
-        className={clsx(areaClass, '!min-h-[64px] w-full')}
+        className={clsx(areaClass, '!min-h-[72px] w-full')}
         placeholder={multiple ? `Scrivi un commento sulla variante ${variant.label}` : 'Scrivi un commento'}
         value={comment}
         onChange={(event) => setComment(event.target.value)}
@@ -336,7 +329,8 @@ const ClientComment: FC<{
         <button
           type="button"
           disabled={busy}
-          className="self-start text-[13px] font-[600] px-[14px] h-[40px] rounded-[8px] bg-newBtnSimple"
+          className="nx-btn self-start"
+          data-size="sm"
           onClick={async () => {
             if (
               await call(`/neptive/portal/approvals/${approvalId}/comments`, {
@@ -351,7 +345,7 @@ const ClientComment: FC<{
         </button>
       )}
       {error && (
-        <div role="alert" className="text-[13px] text-red-300">
+        <div role="alert" className="text-[13px] text-[var(--nx-bad)]">
           {error}
         </div>
       )}
@@ -389,7 +383,7 @@ const DecisionBar: FC<{
         <div className="flex flex-col gap-[8px]">
           <label
             htmlFor={`changes-${variant.id}`}
-            className="text-[12px] text-newTableText"
+            className="nx-label"
           >
             {multiple ? `Cosa vuoi cambiare nella variante ${variant.label}?` : 'Cosa vuoi cambiare?'}
           </label>
@@ -402,16 +396,18 @@ const DecisionBar: FC<{
             onChange={(event) => setNote(event.target.value)}
           />
           <div className="grid grid-cols-2 gap-[8px]">
-            <Button
-              secondary
-              className="!h-[48px] !px-[10px] rounded-[10px] text-[15px] whitespace-nowrap"
+            <button
+              type="button"
+              className="nx-btn !px-[10px]"
               onClick={() => setMode('idle')}
               disabled={busy}
             >
               Annulla
-            </Button>
-            <Button
-              className="!h-[48px] !px-[10px] rounded-[10px] text-[15px] whitespace-nowrap"
+            </button>
+            <button
+              type="button"
+              data-variant="primary"
+              className="nx-btn !px-[10px]"
               disabled={busy || !note.trim()}
               onClick={async () => {
                 if (await transition({ status: 'CHANGES_REQUESTED', comment: note.trim() })) {
@@ -421,30 +417,32 @@ const DecisionBar: FC<{
               }}
             >
               Invia richiesta
-            </Button>
+            </button>
           </div>
         </div>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-[8px]">
-            <Button
-              secondary
-              className="!h-[48px] !px-[10px] rounded-[10px] text-[15px] whitespace-nowrap"
+            <button
+              type="button"
+              className="nx-btn !px-[10px]"
               disabled={busy}
               onClick={() => setMode('changes')}
             >
               Richiedi modifiche
-            </Button>
-            <Button
-              className="!h-[48px] !px-[10px] rounded-[10px] text-[15px] whitespace-nowrap"
+            </button>
+            <button
+              type="button"
+              data-variant="primary"
+              className="nx-btn !px-[10px]"
               disabled={busy}
               onClick={() => transition({ status: 'APPROVED' })}
             >
               {multiple ? `Approva ${variant.label}` : 'Approva'}
-            </Button>
+            </button>
           </div>
           {multiple && (
-            <div className="text-[11px] text-newTableText mt-[6px] text-center lg:text-left">
+            <div className="text-[12px] leading-[1.4] text-[var(--nx-text-muted)] mt-[8px] text-center lg:text-left">
               Approvando la variante {variant.label} la confermi per questa data;
               le altre restano visibili come storico.
             </div>
@@ -452,7 +450,7 @@ const DecisionBar: FC<{
         </>
       )}
       {error && (
-        <div role="alert" className="text-[13px] text-red-300 mt-[6px]">
+        <div role="alert" className="text-[13px] text-[var(--nx-bad)] mt-[6px]">
           {error}
         </div>
       )}
@@ -527,12 +525,12 @@ const AgencyTools: FC<{
   };
 
   return (
-    <section className="rounded-[10px] border border-dashed border-newTableBorder p-[12px] flex flex-col gap-[10px]">
-      <div className="text-[11px] uppercase tracking-[0.08em] text-newTableText">
+    <section className="rounded-[var(--nx-r)] border border-dashed border-[var(--nx-line-strong)] p-[12px] flex flex-col gap-[10px] min-w-0">
+      <div className="nx-label">
         Decisioni del cliente e gestione varianti
       </div>
       {variants.length > 0 && (
-        <ul className="flex flex-col divide-y divide-newTableBorder text-[13px]">
+        <ul className="flex flex-col divide-y divide-[var(--nx-line)] text-[13px]">
           {variants.map((entry) => {
             const meta = stateOf(entry);
             const last = [...(entry.approval?.comments || [])]
@@ -548,13 +546,13 @@ const AgencyTools: FC<{
                     entry.id === variant?.id && 'font-[600]'
                   )}
                 >
-                  <span className="w-[28px] font-[800]">{entry.label}</span>
+                  <span className="w-[28px] nx-heading text-[17px]">{entry.label}</span>
                   <NeptiveBadge tone={meta.tone}>{meta.long}</NeptiveBadge>
-                  <span className="text-[12px] text-newTableText">
-                    {entry.approval ? `approvazione: ${entry.approval.status}` : 'nessuna approvazione'}
+                  <span className="text-[12px] text-[var(--nx-text-muted)]">
+                    {entry.approval ? `approvazione: ${statusLabel(entry.approval.status).toLowerCase()}` : 'nessuna approvazione'}
                   </span>
                   {last && (
-                    <span className="basis-full sm:basis-auto text-[12px] text-newTableText truncate max-w-full">
+                    <span className="basis-full sm:basis-auto text-[12px] text-[var(--nx-text-muted)] truncate max-w-full">
                       ultima nota cliente: “{last.body}”
                     </span>
                   )}
@@ -570,7 +568,9 @@ const AgencyTools: FC<{
             <button
               type="button"
               disabled={busy}
-              className="text-[12px] px-[10px] h-[32px] rounded-[6px] bg-forth text-white"
+              data-variant="primary"
+              data-size="sm"
+              className="nx-btn"
               onClick={() =>
                 run(
                   'POST',
@@ -588,7 +588,8 @@ const AgencyTools: FC<{
               <button
                 type="button"
                 disabled={busy}
-                className="text-[12px] px-[10px] h-[32px] rounded-[6px] bg-newBtnSimple"
+                data-size="sm"
+                className="nx-btn"
                 onClick={() => {
                   const label = window.prompt('Nuova etichetta (max 12 caratteri)', variant.label);
                   if (label && label.trim() && label.trim() !== variant.label) {
@@ -602,7 +603,8 @@ const AgencyTools: FC<{
                 type="button"
                 disabled={busy || index <= 0}
                 aria-label="Sposta a sinistra"
-                className="text-[12px] px-[10px] h-[32px] rounded-[6px] bg-newBtnSimple disabled:opacity-40"
+                data-size="sm"
+                className="nx-btn"
                 onClick={() => move(-1)}
               >
                 ← Sposta
@@ -611,7 +613,8 @@ const AgencyTools: FC<{
                 type="button"
                 disabled={busy || index < 0 || index >= variants.length - 1}
                 aria-label="Sposta a destra"
-                className="text-[12px] px-[10px] h-[32px] rounded-[6px] bg-newBtnSimple disabled:opacity-40"
+                data-size="sm"
+                className="nx-btn"
                 onClick={() => move(1)}
               >
                 Sposta →
@@ -620,11 +623,12 @@ const AgencyTools: FC<{
                 <button
                   type="button"
                   disabled={busy}
-                  className="text-[12px] px-[10px] h-[32px] rounded-[6px] bg-red-900/50 text-red-200"
+                  data-size="sm"
+                  className="nx-btn !text-[var(--nx-bad)] !border-[color:var(--nx-bad)]"
                   onClick={() => {
                     if (
                       window.confirm(
-                        `Rimuovere la variante ${variant.label}? Il post resta in Postiz ma non verrà mai pubblicato da questo slot.`
+                        `Rimuovere la variante ${variant.label}? Il post resta nel calendario ma non verrà mai pubblicato da questo slot.`
                       )
                     ) {
                       run('DELETE', `${base}/variants/${variant.id}`, undefined, `Variante ${variant.label} rimossa`);
@@ -640,7 +644,8 @@ const AgencyTools: FC<{
             <button
               type="button"
               disabled={busy}
-              className="text-[12px] px-[10px] h-[32px] rounded-[6px] bg-amber-900/50 text-amber-100"
+              data-size="sm"
+              className="nx-btn !text-[var(--nx-warn)] !border-[color:var(--nx-warn)]"
               onClick={() => {
                 const comment = window.prompt('Riapri la scelta: nota per lo storico (facoltativa)', '');
                 if (comment === null) return;
@@ -653,12 +658,12 @@ const AgencyTools: FC<{
         </div>
       )}
       {variant?.approval?.actions?.length ? (
-        <details className="text-[12px] text-newTableText">
+        <details className="text-[12px] text-[var(--nx-text-muted)]">
           <summary className="cursor-pointer">Storico decisioni variante {variant.label}</summary>
           <ul className="mt-[6px] flex flex-col gap-[3px]">
             {variant.approval.actions.map((action, idx) => (
               <li key={idx}>
-                {shortDateTime(action.createdAt)} · {action.action} ·{' '}
+                {shortDateTime(action.createdAt)} · {kindLabel(action.action) || action.action} ·{' '}
                 {action.actorType === 'CLIENT_USER' ? 'cliente' : action.actorType === 'AGENCY_USER' ? 'agenzia' : 'sistema'}
                 {action.comment ? ` — ${action.comment}` : ''}
               </li>
@@ -668,7 +673,7 @@ const AgencyTools: FC<{
       ) : null}
       {!confirmed && (
         <div className="flex flex-col sm:flex-row gap-[8px] sm:items-end">
-          <label className="flex-1 flex flex-col gap-[4px] text-[12px] text-newTableText min-w-0">
+          <label className="flex-1 flex flex-col gap-[6px] nx-label min-w-0">
             Aggiungi un post esistente come nuova variante
             <select
               className={clsx(fieldClass, 'w-full min-w-0')}
@@ -683,7 +688,10 @@ const AgencyTools: FC<{
               ))}
             </select>
           </label>
-          <Button
+          <button
+            type="button"
+            data-variant="primary"
+            className="nx-btn !min-h-[42px]"
             disabled={busy || !group}
             onClick={async () => {
               const data = await run(
@@ -702,11 +710,11 @@ const AgencyTools: FC<{
             }}
           >
             + Variante
-          </Button>
+          </button>
         </div>
       )}
       {!!item.removedVariants?.length && (
-        <div className="text-[11px] text-newTableText">
+        <div className="nx-label">
           Rimosse (non pubblicabili da questo slot):{' '}
           {item.removedVariants.map((entry) => entry.label).join(', ')}
         </div>
@@ -769,57 +777,51 @@ export const PedSlotCard: FC<{
       id={`slot-${item.id}`}
       aria-labelledby={`slot-title-${item.id}`}
       className={clsx(
-        'scroll-mt-[16px] bg-newBgColorInner border rounded-[14px] p-[12px] md:p-[18px] flex flex-col gap-[12px] min-w-0',
-        confirmed ? 'border-green-700/60' : 'border-newTableBorder',
+        'nx-slot scroll-mt-[120px] nx-card p-[14px] md:p-[24px] flex flex-col gap-[14px] md:gap-[18px] min-w-0',
+        confirmed && 'nx-slot--confirmed',
         className
       )}
     >
-      <header className="flex items-start gap-[12px] min-w-0">
-        <div className="shrink-0 w-[64px] rounded-[10px] bg-newBgColor border border-newTableBorder text-center py-[6px]">
+      <header className="flex items-start gap-[14px] md:gap-[20px] min-w-0">
+        <div className="shrink-0 w-[62px] md:w-[76px] text-center border-r border-[var(--nx-line)] pr-[14px] md:pr-[20px]">
           {date ? (
             <>
-              <div className="text-[11px] uppercase text-newTableText leading-none">
-                {date.weekday}
-              </div>
-              <div className="text-[26px] font-[800] leading-[1.05]">{date.day}</div>
-              <div className="text-[11px] uppercase text-newTableText leading-none">
-                {date.month}
-              </div>
+              <div className="nx-label leading-none">{date.weekday}</div>
+              <div className="nx-display text-[40px] md:text-[52px] mt-[6px]">{date.day}</div>
+              <div className="nx-label leading-none mt-[6px]">{date.month}</div>
             </>
           ) : (
-            <div className="text-[11px] text-newTableText px-[4px] py-[10px]">
-              Data da definire
-            </div>
+            <div className="nx-label py-[10px]">Data da definire</div>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-x-[8px] gap-y-[2px] text-[13px]">
-            {date && <span className="text-[18px] font-[800]">ore {date.time}</span>}
+          <div className="flex flex-wrap items-center gap-x-[10px] gap-y-[4px] nx-label">
+            {date && <span className="!text-[var(--nx-text)]">Ore {date.time}</span>}
             {content?.platform && (
-              <span className="inline-flex items-center gap-[5px] text-newTableText min-w-0">
+              <span className="inline-flex items-center gap-[5px] min-w-0">
                 <img
                   src={`/icons/platforms/${content.platform}.png`}
                   alt=""
-                  className="h-[16px] w-[16px] shrink-0"
+                  className="h-[14px] w-[14px] shrink-0"
                 />
-                <span className="truncate">{content.channel || content.platform}</span>
+                <span className="truncate normal-case">{content.channel || content.platform}</span>
               </span>
             )}
-            <span className="text-newTableText">· {contentTypeLabel(content?.contentType)}</span>
+            <span>{contentTypeLabel(content?.contentType)}</span>
           </div>
-          <h3 id={`slot-title-${item.id}`} className="text-[16px] font-[700] leading-snug break-words mt-[2px]">
+          <h3 id={`slot-title-${item.id}`} className="nx-heading text-[21px] md:text-[28px] break-words mt-[6px]">
             {item.title || content?.title || 'Contenuto'}
           </h3>
           {slotBadge && (
-            <div className="mt-[4px]">
-              <NeptiveBadge tone={slotBadge.tone}>{slotBadge.text}</NeptiveBadge>
+            <div className="mt-[10px]">
+              <NeptiveBadge tone={slotBadge.tone === 'good' ? 'solid' : slotBadge.tone}>{slotBadge.text}</NeptiveBadge>
             </div>
           )}
         </div>
       </header>
 
       {mode === 'agency' && item.notes && (
-        <div className="text-[12px] text-newTableText whitespace-pre-wrap">
+        <div className="text-[13px] text-[var(--nx-text-muted)] whitespace-pre-wrap">
           Nota interna: {item.notes}
         </div>
       )}
@@ -838,7 +840,7 @@ export const PedSlotCard: FC<{
       )}
 
       {!selected ? (
-        <div className="rounded-[10px] border border-newTableBorder p-[16px] text-[13px] text-newTableText">
+        <div className="nx-banner" data-tone="receded">
           {item.linkStatus === 'MISSING'
             ? 'Contenuto non disponibile.'
             : 'Nessun contenuto ancora collegato a questa data.'}
@@ -852,11 +854,11 @@ export const PedSlotCard: FC<{
           {(multiple || selected.state !== 'TO_REVIEW') && (
             <StatusBanner item={item} variant={selected} />
           )}
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(300px,380px)] gap-[16px] min-w-0">
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] gap-[18px] lg:gap-[28px] min-w-0">
             <div
               className={clsx(
-                'min-w-0 transition-opacity',
-                receded && 'opacity-50 grayscale-[60%]'
+                'relative min-w-0 transition-[opacity,filter] duration-200',
+                receded && 'opacity-55 grayscale-[70%]'
               )}
             >
               {selected.content ? (
@@ -865,17 +867,17 @@ export const PedSlotCard: FC<{
                   identity={previewIdentity}
                 />
               ) : (
-                <div className="rounded-[10px] bg-black min-h-[200px] flex items-center justify-center text-[13px] text-white/70">
+                <div className="rounded-[var(--nx-r)] bg-[var(--nx-bg)] border border-[var(--nx-line)] min-h-[200px] flex items-center justify-center nx-label">
                   Anteprima non disponibile
                 </div>
               )}
             </div>
-            <div className="flex flex-col gap-[14px] min-w-0">
-              <section className={clsx(receded && 'opacity-70')}>
+            <div className="flex flex-col gap-[18px] min-w-0">
+              <section className={clsx(receded && 'opacity-75')}>
                 <SectionLabel>
                   {multiple ? `Testo · variante ${selected.label}` : 'Testo del post'}
                 </SectionLabel>
-                <div className="rounded-[8px] bg-newBgColor p-[10px] text-[14px] whitespace-pre-wrap break-words max-h-[320px] overflow-y-auto">
+                <div className="rounded-[var(--nx-r)] bg-[var(--nx-bg)] p-[12px] text-[15px] leading-[1.5] whitespace-pre-wrap break-words max-h-[320px] overflow-y-auto">
                   {selected.content?.caption || 'Nessuna caption'}
                 </div>
               </section>
@@ -898,7 +900,7 @@ export const PedSlotCard: FC<{
               variant={selected}
               multiple={multiple}
               onDone={onChanged}
-              className="lg:hidden sticky bottom-0 z-[5] -mx-[12px] md:-mx-[18px] px-[12px] md:px-[18px] pt-[10px] pb-[calc(10px+env(safe-area-inset-bottom))] bg-newBgColorInner/95 backdrop-blur border-t border-newTableBorder"
+              className="lg:hidden sticky bottom-0 z-[5] -mx-[14px] md:-mx-[24px] -mb-[14px] md:-mb-[24px] px-[14px] md:px-[24px] pt-[12px] pb-[calc(12px+env(safe-area-inset-bottom))] bg-[var(--nx-surface)]/95 backdrop-blur border-t border-[var(--nx-line)]"
             />
           )}
         </div>
@@ -919,13 +921,13 @@ export const PedSlotFeed: FC<{
   const sorted = useMemo(() => sortSlotsByDate(items), [items]);
   if (!sorted.length) {
     return (
-      <div className="text-[13px] text-newTableText py-[12px]">
+      <div className="text-[14px] text-[var(--nx-text-muted)] py-[12px]">
         Nessun contenuto in questo piano.
       </div>
     );
   }
   return (
-    <div className="flex flex-col gap-[14px] min-w-0">
+    <div className="flex flex-col gap-[16px] min-w-0">
       {sorted.map((item) => (
         <PedSlotCard
           key={item.id}

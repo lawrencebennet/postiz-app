@@ -1,5 +1,6 @@
 // @ts-check
 import { withSentryConfig } from '@sentry/nextjs';
+import { withNeptiveBrand } from '../../neptive/brand/next/with-neptive-brand.mjs';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -56,7 +57,7 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+export default withSentryConfig(withNeptiveBrand(nextConfig), {
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,

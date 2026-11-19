@@ -1,7 +1,8 @@
 'use client';
 
 import { FC } from 'react';
-import { NeptiveBadge, statusTone } from '@gitroom/frontend/components/neptive/neptive.ui';
+import clsx from 'clsx';
+import { NeptiveBadge, statusLabel, statusTone } from '@gitroom/frontend/components/neptive/neptive.ui';
 
 export type PedContent = {
   postGroup: string;
@@ -104,70 +105,88 @@ export const formatPedDate = (value?: string | null) => {
 export const PedContentCard: FC<{
   item: PedCalendarItem;
   onOpen: (item: PedCalendarItem) => void;
-}> = ({ item, onOpen }) => {
+  /** calendar cell: thumbnail, time and title only */
+  compact?: boolean;
+}> = ({ item, onOpen, compact = false }) => {
   const content = item.content;
   const firstMedia = content?.media?.[0];
   const platform = content?.platform || '';
   const approvalStatus = item.approval?.status || 'NOT_SUBMITTED';
   const publishingState = content?.publishingState || 'UNLINKED';
   const variantCount = item.variants?.length || 0;
-  const confirmed = item.variants?.find(
-    (variant) => variant.id === item.slot?.confirmedVariantId
+  const confirmed = item.variants?.find((variant) => variant.id === item.slot?.confirmedVariantId);
+  const title = item.title || content?.title || 'Contenuto';
+
+  const thumb = (
+    <div className={clsx('bg-[var(--nx-bg)] flex items-center justify-center overflow-hidden', compact ? 'aspect-square' : 'aspect-[16/10]')}>
+      {firstMedia ? (
+        firstMedia.type === 'video' ? (
+          <video src={firstMedia.path} poster={firstMedia.thumbnail} preload="metadata" muted className="h-full w-full object-cover" />
+        ) : (
+          <img src={firstMedia.thumbnail || firstMedia.path} alt="" className="h-full w-full object-cover" />
+        )
+      ) : (
+        <span className="px-[8px] nx-label text-center">Nessuna anteprima</span>
+      )}
+    </div>
   );
+
+  if (compact) {
+    return (
+      <button
+        type="button"
+        title={title}
+        className="block w-full min-w-0 text-left rounded-[2px] border border-[var(--nx-line)] bg-[var(--nx-surface)] overflow-hidden hover:border-[var(--nx-text)] transition-colors"
+        onClick={() => onOpen(item)}
+      >
+        {thumb}
+        <div className="p-[5px] min-w-0">
+          <div className="nx-mono text-[10px] text-[var(--nx-text-muted)] truncate">
+            {formatPedDate(content?.scheduledAt).split(', ').pop()}
+            {variantCount > 1 && ` · ${confirmed ? confirmed.label + ' ✓' : variantCount + ' var.'}`}
+          </div>
+          <div className="text-[11px] leading-[1.25] font-[600] line-clamp-2 break-words">{title}</div>
+        </div>
+      </button>
+    );
+  }
 
   return (
     <button
       type="button"
-      className="w-full text-left rounded-[10px] border border-newTableBorder bg-newBgColorInner overflow-hidden hover:border-textColor transition-colors"
+      className="w-full min-w-0 text-left rounded-[var(--nx-r)] border border-[var(--nx-line)] bg-[var(--nx-surface)] overflow-hidden hover:border-[var(--nx-text)] transition-colors"
       onClick={() => onOpen(item)}
     >
-      <div className="aspect-[16/10] bg-newBgColor flex items-center justify-center overflow-hidden">
-        {firstMedia ? (
-          firstMedia.type === 'video' ? (
-            <video
-              src={firstMedia.path}
-              poster={firstMedia.thumbnail}
-              preload="metadata"
-              muted
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <img src={firstMedia.thumbnail || firstMedia.path} alt="" className="h-full w-full object-cover" />
-          )
-        ) : (
-          <span className="px-[12px] text-[12px] text-newTableText">Nessuna anteprima</span>
-        )}
-      </div>
-      <div className="p-[10px] flex flex-col gap-[6px]">
-        <div className="flex items-center justify-between gap-[6px] text-[11px] text-newTableText">
-          <span>{formatPedDate(content?.scheduledAt)}</span>
+      {thumb}
+      <div className="p-[10px] flex flex-col gap-[7px] min-w-0">
+        <div className="flex items-center justify-between gap-[6px] nx-label">
+          <span className="truncate">{formatPedDate(content?.scheduledAt)}</span>
           {platform && (
-            <span className="inline-flex items-center gap-[4px]">
-              <img src={`/icons/platforms/${platform}.png`} alt="" className="h-[15px] w-[15px]" />
+            <span className="inline-flex items-center gap-[4px] shrink-0">
+              <img src={`/icons/platforms/${platform}.png`} alt="" className="h-[14px] w-[14px]" />
               {platform}
             </span>
           )}
         </div>
-        <div className="font-[600] text-[13px] line-clamp-2">{item.title || content?.title || 'Contenuto'}</div>
+        <div className="font-[600] text-[14px] leading-[1.3] line-clamp-2 break-words">{title}</div>
         <div className="flex flex-wrap gap-[4px]">
           <NeptiveBadge>{contentTypeLabel(content?.contentType)}</NeptiveBadge>
-          {content?.contentType === 'CAROUSEL' && (
-            <NeptiveBadge>{content.media.length} slide</NeptiveBadge>
-          )}
+          {content?.contentType === 'CAROUSEL' && <NeptiveBadge>{content.media.length} slide</NeptiveBadge>}
           {variantCount > 1 ? (
             <NeptiveBadge tone={confirmed ? 'good' : 'warn'}>
               {confirmed ? `Variante ${confirmed.label} confermata` : `${variantCount} varianti`}
             </NeptiveBadge>
           ) : (
             <NeptiveBadge tone={statusTone(approvalStatus)}>
-              {approvalStatus === 'NOT_SUBMITTED' ? 'Da collegare' : approvalStatus}
+              {approvalStatus === 'NOT_SUBMITTED' ? 'Da collegare' : statusLabel(approvalStatus)}
             </NeptiveBadge>
           )}
         </div>
-        <div className="text-[11px] text-newTableText line-clamp-2">
-          {content?.caption || (item.linkStatus === 'MISSING' ? 'Collegamento Neptive non disponibile' : 'Collega un contenuto Neptive')}
+        <div className="text-[12px] leading-[1.4] text-[var(--nx-text-muted)] line-clamp-2 break-words">
+          {content?.caption ||
+            (item.linkStatus === 'MISSING' ? 'Contenuto collegato non disponibile' : 'Collega un contenuto')}
         </div>
-        <div className="text-[10px] text-newTableText">Pubblicazione: {publishingState}</div>
+        <div className="nx-label">Pubblicazione: {statusLabel(publishingState)}</div>
       </div>
     </button>
   );
