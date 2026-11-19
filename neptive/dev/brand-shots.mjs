@@ -132,10 +132,10 @@ for (const w of sizes) {
     await adminLogin(page);
     await page.goto(BASE + '/launches', { waitUntil: 'networkidle' });
     await shot(page, w, 'admin-calendar', { wait: 2500 });
-    const create = page.locator('button').filter({ hasText: /crea post|create post|nuovo post/i }).first();
+    const create = page.locator('button:visible').filter({ hasText: /crea post|create post|nuovo post/i }).first();
     if (await create.count()) {
       await create.click().catch(() => {});
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(4000);
       await shot(page, w, 'admin-post-editor');
       await page.keyboard.press('Escape').catch(() => {});
     } else log.push('post editor: create button not found');
