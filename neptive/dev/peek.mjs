@@ -31,5 +31,6 @@ await page.goto(BASE + path, { waitUntil: 'networkidle', timeout: 120000 }).catc
 await page.waitForTimeout(2000);
 const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 await page.screenshot({ path: OUT + name + '.png', fullPage: full });
-console.log(OUT + name + '.png', 'overflow', overflow, errors.join(' | '));
+const info = await page.evaluate(() => ({ title: document.title, icon: [...document.querySelectorAll('link[rel*=icon]')].map((l) => l.getAttribute('href')).join(','), brand: (document.body.innerText.match(/[^\n]*(postiz|gitroom)[^\n]*/gi) || []).slice(0, 8) }));
+console.log(OUT + name + '.png', 'overflow', overflow, JSON.stringify(info), errors.join(' | '));
 await browser.close();

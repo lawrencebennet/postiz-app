@@ -61,7 +61,7 @@ export const PortalShell = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen flex flex-col bg-[var(--nx-bg)] text-[var(--nx-text)]">
-      <header className="sticky top-0 z-[40] bg-[var(--nx-bg)]/95 backdrop-blur-md border-b border-[var(--nx-line)]">
+      <header className="nx-portal-header md:sticky top-0 z-[40] border-b border-[var(--nx-line)]">
         <div className="max-w-[1180px] mx-auto px-[16px] md:px-[32px] h-[58px] flex items-center justify-between gap-[12px]">
           <Link href="/portal" className="flex items-end gap-[10px] min-w-0" aria-label="Neptive, portale clienti">
             <NeptiveWordmark className="h-[21px] w-auto shrink-0" />
@@ -265,7 +265,7 @@ export const PortalOverview = () => {
           ) : (
             <p className="text-[16px] text-[var(--nx-text-muted)]">Tutto in ordine: niente da approvare in questo momento.</p>
           )}
-          <div className="flex flex-wrap gap-[8px]">
+          <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-[8px]">
             <Link href="/portal/ped" data-variant="primary" className="nx-btn">
               Vai al piano editoriale <span className="nx-arrow" aria-hidden="true">↗</span>
             </Link>

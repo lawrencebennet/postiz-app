@@ -777,7 +777,7 @@ export const PedSlotCard: FC<{
       id={`slot-${item.id}`}
       aria-labelledby={`slot-title-${item.id}`}
       className={clsx(
-        'nx-slot scroll-mt-[120px] nx-card p-[14px] md:p-[24px] flex flex-col gap-[14px] md:gap-[18px] min-w-0',
+        'nx-slot scroll-mt-[16px] md:scroll-mt-[120px] nx-card p-[14px] md:p-[24px] flex flex-col gap-[14px] md:gap-[18px] min-w-0',
         confirmed && 'nx-slot--confirmed',
         className
       )}
@@ -900,7 +900,7 @@ export const PedSlotCard: FC<{
               variant={selected}
               multiple={multiple}
               onDone={onChanged}
-              className="lg:hidden sticky bottom-0 z-[5] -mx-[14px] md:-mx-[24px] -mb-[14px] md:-mb-[24px] px-[14px] md:px-[24px] pt-[12px] pb-[calc(12px+env(safe-area-inset-bottom))] bg-[var(--nx-surface)]/95 backdrop-blur border-t border-[var(--nx-line)]"
+              className="lg:hidden sticky bottom-0 z-[5] -mx-[14px] md:-mx-[24px] -mb-[14px] md:-mb-[24px] px-[14px] md:px-[24px] pt-[12px] pb-[calc(12px+env(safe-area-inset-bottom))] nx-sticky-bar border-t border-[var(--nx-line)]"
             />
           )}
         </div>
