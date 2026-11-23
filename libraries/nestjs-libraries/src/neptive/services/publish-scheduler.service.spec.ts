@@ -205,6 +205,28 @@ describe('scheduling an approved post group', () => {
     expect(repo.createActivity.mock.calls[0][0]).toMatchObject({ type: 'OTHER', visibility: 'INTERNAL' });
   });
 
+  it('a workflow killed by a later post of the same group is caught: the check runs after the whole group, by workflow id', async () => {
+    // fake Temporal: starting fb-1 terminates ig-1's workflow (the upstream fuzzy-termination pattern)
+    const alive = new Set<string>();
+    const { scheduler, postiz, repo, state } = setup({ running: (id) => alive.has(id) });
+    postiz.schedulePost.mockImplementation(async (_org: string, id: string) => {
+      if (id === 'fb-1') alive.delete('ig-1');
+      alive.add(id);
+    });
+    // keep the in-memory states in step with the adapter calls
+    const result = await scheduler.scheduleApproved(INPUT, NOW);
+    expect(result.status).toBe('FAILED');
+    expect(result.reason).toContain('ig-1');
+    const lastSchedule = Math.max(...postiz.schedulePost.mock.invocationCallOrder);
+    expect(postiz.postWorkflowRunning.mock.invocationCallOrder.every((order) => order > lastSchedule)).toBe(true);
+    expect(postiz.postWorkflowRunning.mock.calls.map((call) => call[0])).toEqual(
+      expect.arrayContaining(['ig-1', 'fb-1'])
+    );
+    expect(postiz.unschedulePost.mock.calls.map((call) => call[1]).sort()).toEqual(['fb-1', 'ig-1']);
+    expect(state()).toEqual({ 'ig-1': 'DRAFT', 'fb-1': 'DRAFT' });
+    expect(repo.createActivity.mock.calls[0][0]).toMatchObject({ type: 'OTHER', visibility: 'INTERNAL' });
+  });
+
   it('cannot even check the workflow: treated as a failure, back to DRAFT', async () => {
     const { scheduler, state } = setup({
       running: () => {

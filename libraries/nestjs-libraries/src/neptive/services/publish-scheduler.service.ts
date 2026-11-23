@@ -175,6 +175,10 @@ export class NeptivePublishScheduler {
         );
       }
 
+      // Only once the WHOLE group is scheduled: starting a later post can kill
+      // an earlier post's workflow (upstream fuzzy termination, see
+      // UPSTREAM-SYNC), so a per-post check would miss it. describe() on
+      // post_<id> is a direct read, not the lagging visibility search.
       for (const id of touched) {
         let running = false;
         try {
