@@ -79,6 +79,25 @@ const states = () =>
       .map((line) => line.split('|'))
   );
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const RUNNING = 'WORKFLOW_EXECUTION_STATUS_RUNNING';
+const runId = (postId) => {
+  try {
+    return JSON.parse(temporal('workflow', 'describe', '-w', `post_${postId}`, '-o', 'json')).workflowExecutionInfo.execution.runId;
+  } catch {
+    return null;
+  }
+};
+// runs of post_<id> started after `since` (visibility lags: give it a few seconds)
+const runsSince = async (postId, since) => {
+  await sleep(4000);
+  return Number(
+    temporal('workflow', 'count', '-q', `WorkflowId="post_${postId}" AND StartTime > "${since}"`).match(/\d+/)?.[0]
+  );
+};
+async function agencyCall(headers, method, path, body) {
+  const response = await fetch(API + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+  return response.status;
+}
 
 function seed() {
   const out = sh('bash', ['neptive/dev/seed-variants.sh']);
@@ -150,7 +169,8 @@ const lastActivity = (group) =>
        where "relatedPostGroup" = '${group}' and type in ('POST_SCHEDULED', 'OTHER') order by "createdAt" desc limit 1`);
 
 function terminateLeftovers() {
-  for (const id of Object.keys(states())) {
+  const ids = sql(`select id from "Post" where id like '5eed1000-%' or "integrationId" = '${FB}'`).split('\n').filter(Boolean);
+  for (const id of ids) {
     if (workflowStatus(id) === 'WORKFLOW_EXECUTION_STATUS_RUNNING') {
       temporal('workflow', 'terminate', '-w', `post_${id}`, '--reason', 'neptive schedule-check cleanup');
     }
@@ -215,6 +235,7 @@ async function main() {
   // ---------------------------------------------------------------- 2. passed date
   console.log('\n# 2. approval after the planned date (10:00 Rome, three days ago)');
   terminateLeftovers();
+  const since2 = new Date().toISOString();
   portal = await portalSession(seed());
   sql(`update "Post" set "publishDate" = (date_trunc('day', now() at time zone 'Europe/Rome') - interval '3 days' + interval '10 hours') at time zone 'Europe/Rome' at time zone 'UTC'
        where id in ('${P('b')}', '${FB_B}')`);
@@ -228,6 +249,8 @@ async function main() {
     moved.replace(/\n/g, ' ; ')
   );
   check(/spostata/.test(lastActivity(G('b'))), 'client activity says the date was moved', lastActivity(G('b')));
+  const movedRuns = [await runsSince(P('b'), since2), await runsSince(FB_B, since2)];
+  check(movedRuns.every((n) => n === 1), 'move then schedule: exactly one workflow run per post', movedRuns.join(' / '));
 
   // ---------------------------------------------------------------- 3. Temporal down
   if (!process.env.SKIP_TEMPORAL_DOWN) {
@@ -304,6 +327,73 @@ async function main() {
   await approve(portal, single.variants[0].approval.id);
   check(workflowStatus(P('e')) === 'WORKFLOW_EXECUTION_STATUS_RUNNING', 'E scheduled, workflow RUNNING');
   check(alive(), 'scheduling E did not terminate B Instagram / Facebook', `${workflowStatus(P('b'))} / ${workflowStatus(FB_B)}`);
+
+  // ---------------------------------------------------------------- 6. agency deletes the scheduled group
+  console.log('\n# 6. the agency deletes the approved group (Instagram + Facebook) from Postiz');
+  terminateLeftovers();
+  portal = await portalSession(seed());
+  item = await portalItem(portal);
+  await approve(portal, item.variants.find((variant) => variant.label === 'B').approval.id);
+  check([P('b'), FB_B].every((id) => workflowStatus(id) === RUNNING), 'precondition: both B workflows RUNNING');
+  const deleted = await agencyCall(agency, 'DELETE', `/posts/${G('b')}`);
+  check(deleted < 300, 'DELETE /posts/<group> accepted', `HTTP ${deleted}`);
+  check(
+    sql(`select count(*) from "Post" where "group" = '${G('b')}' and "deletedAt" is null`) === '0',
+    'every post of the group is marked deleted'
+  );
+  check(
+    [P('b'), FB_B].every((id) => workflowStatus(id) !== RUNNING),
+    'the workflows of BOTH channels are stopped',
+    `${workflowStatus(P('b'))} / ${workflowStatus(FB_B)}`
+  );
+
+  // ---------------------------------------------------------------- 7. agency moves the date of a queued post
+  console.log('\n# 7. the agency changes the date of an approved (QUEUE) post, action "update"');
+  terminateLeftovers();
+  portal = await portalSession(seed());
+  item = await portalItem(portal);
+  await approve(portal, item.variants.find((variant) => variant.label === 'B').approval.id);
+  const before = runId(P('b'));
+  const newDate = new Date(Date.now() + 5 * 24 * 3600 * 1000);
+  newDate.setUTCSeconds(0, 0);
+  const since7 = new Date().toISOString();
+  const moved7 = await agencyCall(agency, 'PUT', `/posts/${P('b')}/date`, {
+    date: newDate.toISOString().slice(0, 19),
+    action: 'update',
+  });
+  check(moved7 < 300, 'PUT /posts/<id>/date accepted', `HTTP ${moved7}`);
+  check(sql(`select state from "Post" where id = '${P('b')}'`) === 'QUEUE', 'still QUEUE');
+  const after = runId(P('b'));
+  check(!!after && after !== before && workflowStatus(P('b')) === RUNNING, 'workflow restarted (new run, RUNNING)', `${before} -> ${after}`);
+  check((await runsSince(P('b'), since7)) === 1, 'exactly one new run, started after the new date was written');
+  check(workflowStatus(FB_B) === RUNNING, 'the Facebook twin is untouched');
+
+  // ---------------------------------------------------------------- 8. approval and reopen at the same time
+  console.log('\n# 8. reopen and a new approval of the same slot fired at the same time (x4)');
+  for (let round = 0; round < 4; round++) {
+    terminateLeftovers();
+    portal = await portalSession(seed());
+    item = await portalItem(portal);
+    const approvalB = item.variants.find((variant) => variant.label === 'B').approval.id;
+    await approve(portal, approvalB);
+    const reopenCall = () =>
+      agencyCall(agency, 'POST', `/neptive/agency/clients/${AURORA}/peds/${PLAN}/items/${ITEM}/reopen`, {});
+    const statuses =
+      round % 2 === 0
+        ? await Promise.all([reopenCall(), sleep(15).then(() => approve(portal, approvalB))])
+        : await Promise.all([approve(portal, approvalB), sleep(15).then(reopenCall)]);
+    const confirmed = sql(`select "confirmedVariantId" is not null from neptive_editorial_plan_items where id = '${ITEM}'`) === 't';
+    const s8 = states();
+    const runningB = [P('b'), FB_B].map((id) => workflowStatus(id) === RUNNING);
+    const ok = confirmed
+      ? s8[P('b')] === 'QUEUE' && s8[FB_B] === 'QUEUE' && runningB.every(Boolean)
+      : s8[P('b')] === 'DRAFT' && s8[FB_B] === 'DRAFT' && !runningB.some(Boolean);
+    check(
+      ok,
+      `round ${round + 1}: slot ${confirmed ? 'confirmed' : 'open'} and B posts consistent`,
+      `HTTP reopen/approve ${round % 2 === 0 ? statuses.join('/') : statuses.slice().reverse().join('/')}, ${s8[P('b')]}/${s8[FB_B]}, running ${runningB.join('/')}`
+    );
+  }
 
   // ---------------------------------------------------------------- cleanup
   terminateLeftovers();
