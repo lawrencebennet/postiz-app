@@ -200,6 +200,26 @@ identical to the repo's `dynamicconfig/`) is what finally lets the checkout go.
 - Production has `RESEND_API_KEY` but, by variable names, no `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME`: `sendEmailSync`
   returns early without them, so no email leaves today. Unchanged by this deploy.
 
+## Next deploy, prepared 2026-11-23 (not run)
+
+- Image `local/postiz-neptive:neptive-next-c073f6f9` (commit `c073f6f9`: approval scheduling + `posts.service.ts` terminate
+  guard), id `sha256:eef179622d3a1850eb3f5ef2a9f77fb63b66440d79156c801bb438be00eeed63`, 2.37 GB, amd64, no `.env` / dev data.
+  Built locally with exactly step 1's command (`git archive` + `docker build -f Dockerfile.dev --build-arg
+  NEXT_PUBLIC_VERSION=neptive`): 6 min 18 s, `pnpm install` 79 s and `pnpm run build` 76 s both run (no cache: `COPY .`
+  precedes them).
+- Smoke test of that image (`rehearse-prod-image.sh restore` + `schema` + `up`, prod dump of 19 Nov): "already in sync",
+  Backend is running, backend / frontend / orchestrator online with 0 restarts, `/auth/login` 200, `/portal/login` 200,
+  `/api/neptive/portal/me` 401.
+- Schema: `schema.prisma` unchanged since `d54aa4c8`, the diff against a migrated database is "-- This is an empty
+  migration.". That made the schema step fail (the last `grep` for DROP lines exits 1 when there are none, and with
+  `--stop-before-schema` the container is already stopped at that point); fixed in `deploy-prod.sh`.
+- Disk: the 19 Nov deploy left 13 GB free and the preflight wants >= 14 GB. Expect it to stop; free space deliberately
+  first (e.g. `docker rmi local/postiz-neptive:rollback-20261119-1930`, the pre-`neptive-next` image, ~6.7 GB, once you
+  no longer want to roll back that far; this deploy tags the current image as the new rollback).
+- Behaviour change for the agency: from this image the client's approval of a PED slot schedules its DRAFT posts
+  (`neptive/docs/approval-scheduling.md`). Look at pending approvals with DRAFT posts whose date has passed before
+  deploying: on approval they go out at the same hour on the next possible day.
+
 ## Deploy log
 
 ### 2026-11-19 (Europe/Rome), first deploy of `neptive-next`
