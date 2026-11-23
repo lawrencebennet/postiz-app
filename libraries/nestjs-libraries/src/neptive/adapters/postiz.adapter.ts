@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Organization } from '@prisma/client';
+import { TemporalService } from 'nestjs-temporal-core';
+import { WorkflowNotFoundError } from '@temporalio/common';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { MediaService } from '@gitroom/nestjs-libraries/database/prisma/media/media.service';
@@ -18,8 +20,74 @@ export class PostizAdapter {
     private integrations: IntegrationService,
     private posts: PostsService,
     private media: MediaService,
-    private prisma: PrismaService
+    private prisma: PrismaService,
+    private temporal: TemporalService
   ) {}
+
+  // ------------------------------------------------- scheduling bridge
+  // Used by NeptivePublishScheduler. State changes go through PostsService only
+  // (QUEUE/DRAFT + postWorkflowV112 start/terminate); the Temporal reads below
+  // exist because PostsService.startWorkflow swallows every Temporal error.
+
+  schedulePost(orgId: string, postId: string) {
+    return this.posts.changePostStatus(orgId, postId, 'schedule');
+  }
+
+  unschedulePost(orgId: string, postId: string) {
+    return this.posts.changePostStatus(orgId, postId, 'draft');
+  }
+
+  /** Date only (action 'update'): state and workflow untouched. */
+  movePublishDate(orgId: string, postId: string, date: Date) {
+    return this.posts.changeDate(orgId, postId, date.toISOString(), 'update');
+  }
+
+  private rawTemporal() {
+    const raw = this.temporal?.client?.getRawClient?.();
+    if (!raw) {
+      throw new Error('Temporal client not connected');
+    }
+    return raw;
+  }
+
+  private withTimeout<T>(promise: Promise<T>, what: string, ms = 8000) {
+    let timer: ReturnType<typeof setTimeout>;
+    return Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Temporal timeout (${what})`)), ms);
+      }),
+    ]).finally(() => clearTimeout(timer));
+  }
+
+  /** Throws unless the Temporal frontend answers. */
+  async assertSchedulerReachable() {
+    const raw = this.rawTemporal();
+    await this.withTimeout(
+      raw.workflowService.getSystemInfo({}),
+      'system info'
+    );
+  }
+
+  /**
+   * True if workflow post_<id> (the id PostsService.startWorkflow uses) is running.
+   * False if it is not running or does not exist. Throws when it cannot tell.
+   */
+  async postWorkflowRunning(postId: string) {
+    const raw = this.rawTemporal();
+    try {
+      const description = await this.withTimeout(
+        raw.workflow.getHandle(`post_${postId}`).describe(),
+        'describe'
+      );
+      return description?.status?.name === 'RUNNING';
+    } catch (err) {
+      if (err instanceof WorkflowNotFoundError) {
+        return false;
+      }
+      throw err;
+    }
+  }
 
   async integrationsForCustomer(orgId: string, customerId: string) {
     const list = await this.integrations.getIntegrationsList(orgId);
