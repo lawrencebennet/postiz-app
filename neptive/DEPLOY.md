@@ -202,23 +202,26 @@ identical to the repo's `dynamicconfig/`) is what finally lets the checkout go.
 
 ## Next deploy, prepared 2026-11-23 (not run)
 
-- Image `local/postiz-neptive:neptive-next-c073f6f9` (commit `c073f6f9`: approval scheduling + `posts.service.ts` terminate
-  guard), id `sha256:eef179622d3a1850eb3f5ef2a9f77fb63b66440d79156c801bb438be00eeed63`, 2.37 GB, amd64, no `.env` / dev data.
+- Image `local/postiz-neptive:neptive-next-51dd7853` (commit `51dd7853`: approval scheduling, `posts.service.ts`
+  terminate guard + `deletePost` every root + `changeDate` restart of a waiting QUEUE post, slot lock, customer scope),
+  id `sha256:7cd4bcd1c9fe1865f7a48ff8adc28a7ecd8c058e83aa1bf63229c7c5535d92a4`, 2.37 GB, amd64, no `.env` / dev data.
   Built locally with exactly step 1's command (`git archive` + `docker build -f Dockerfile.dev --build-arg
-  NEXT_PUBLIC_VERSION=neptive`): 6 min 18 s, `pnpm install` 79 s and `pnpm run build` 76 s both run (no cache: `COPY .`
-  precedes them).
+  NEXT_PUBLIC_VERSION=neptive`): 6 min 13 s, `pnpm install` 78 s and `pnpm run build` 76 s both run (no cache:
+  `COPY .` precedes them). Supersedes the `c073f6f9` image prepared earlier the same day (do not deploy that one).
 - Smoke test of that image (`rehearse-prod-image.sh restore` + `schema` + `up`, prod dump of 19 Nov): "already in sync",
   Backend is running, backend / frontend / orchestrator online with 0 restarts, `/auth/login` 200, `/portal/login` 200,
-  `/api/neptive/portal/me` 401.
-- Schema: `schema.prisma` unchanged since `d54aa4c8`, the diff against a migrated database is "-- This is an empty
+  `/api/neptive/portal/me` 401. The approval path itself was exercised on the dev backend (`schedule-check.mjs`, 41/41),
+  not inside this container.
+- Schema: `schema.prisma` unchanged since `d54aa4c8`; the diff against a migrated database is "-- This is an empty
   migration.". That made the schema step fail (the last `grep` for DROP lines exits 1 when there are none, and with
-  `--stop-before-schema` the container is already stopped at that point); fixed in `deploy-prod.sh`.
+  `--stop-before-schema` the container is already stopped at that point); fixed in `deploy-prod.sh` (`53e3fadc`).
+- New at run time: the backend opens a second small Prisma pool (3 connections) for the slot lock, on first use.
 - Disk: the 19 Nov deploy left 13 GB free and the preflight wants >= 14 GB. Expect it to stop; free space deliberately
   first (e.g. `docker rmi local/postiz-neptive:rollback-20261119-1930`, the pre-`neptive-next` image, ~6.7 GB, once you
   no longer want to roll back that far; this deploy tags the current image as the new rollback).
 - Behaviour change for the agency: from this image the client's approval of a PED slot schedules its DRAFT posts
-  (`neptive/docs/approval-scheduling.md`). Look at pending approvals with DRAFT posts whose date has passed before
-  deploying: on approval they go out at the same hour on the next possible day.
+  (`neptive/docs/approval-scheduling.md`, including "Known limits"). Look at pending approvals with DRAFT posts whose
+  date has passed before deploying: on approval they go out at the same hour on the next possible day.
 
 ## Deploy log
 
