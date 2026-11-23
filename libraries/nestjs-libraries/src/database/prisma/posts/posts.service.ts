@@ -1475,7 +1475,15 @@ export class PostsService {
       action
     );
 
-    if (action === 'schedule') {
+    // Neptive: a queued post's workflow read the publish date when it started
+    // and sleeps until it, so a date-only change ('update') must restart it as
+    // well while it is still waiting. Not when the old date has passed: the
+    // calendar sends 'update' for "just update the post details" on a published
+    // or past-QUEUE post, whose workflow may be publishing right now.
+    const queuedAndWaiting =
+      getPostById.state === 'QUEUE' &&
+      dayjs.utc(getPostById.publishDate).isAfter(dayjs.utc().add(1, 'minute'));
+    if (action === 'schedule' || queuedAndWaiting) {
       try {
         await this.startWorkflow(
           getPostById.integration.providerIdentifier

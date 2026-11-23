@@ -167,3 +167,48 @@ describe('PostsService workflow termination is scoped to the post (upstream dive
   });
 });
 
+describe('PostsService.changeDate restarts the workflow of a queued post (upstream divergence)', () => {
+  const FUTURE = new Date(Date.now() + 3 * 24 * 3600 * 1000);
+  const repo = (state: string, publishDate: Date = FUTURE) => ({
+    getPostById: jest.fn().mockResolvedValue({ id: A, state, publishDate, integration: { providerIdentifier: 'instagram' } }),
+    changeDate: jest.fn().mockResolvedValue({ id: A }),
+  });
+
+  it('QUEUE + action "update" (date only): the old workflow is replaced by one that reads the new date', async () => {
+    const fake = fakeTemporal([{ workflowId: `post_${A}`, postId: A, running: true }]);
+    const repository = repo('QUEUE');
+    await service(fake.temporal, repository).changeDate('org-1', A, '2026-12-01T09:00:00.000Z', 'update');
+    const start = fake.temporal.client.getRawClient().workflow.start;
+    expect(start).toHaveBeenCalledTimes(1);
+    // started after the date was written, so the new run reads the new date
+    expect(repository.changeDate.mock.invocationCallOrder[0]).toBeLessThan(start.mock.invocationCallOrder[0]);
+    expect(fake.runs.filter((run) => run.workflowId === `post_${A}` && run.running)).toHaveLength(1);
+    expect(fake.runs.filter((run) => run.workflowId === `post_${A}`)).toHaveLength(2);
+  });
+
+  it('DRAFT / PUBLISHED / ERROR + "update": no workflow is started', async () => {
+    for (const state of ['DRAFT', 'PUBLISHED', 'ERROR']) {
+      const fake = fakeTemporal();
+      await service(fake.temporal, repo(state)).changeDate('org-1', A, '2026-12-01T09:00:00.000Z', 'update');
+      expect(fake.temporal.client.getRawClient().workflow.start).not.toHaveBeenCalled();
+    }
+  });
+
+  it('QUEUE + "update" whose old date has passed ("just update the details" in the calendar): no restart, it may be publishing', async () => {
+    for (const publishDate of [new Date(Date.now() - 3600 * 1000), new Date(Date.now() + 20 * 1000)]) {
+      const fake = fakeTemporal([{ workflowId: `post_${A}`, postId: A, running: true }]);
+      await service(fake.temporal, repo('QUEUE', publishDate)).changeDate('org-1', A, '2026-12-01T09:00:00.000Z', 'update');
+      expect(fake.temporal.client.getRawClient().workflow.start).not.toHaveBeenCalled();
+      expect(fake.running(`post_${A}`)).toBe(true);
+    }
+  });
+
+  it('"schedule" keeps its behaviour (QUEUE restarts, DRAFT only terminates)', async () => {
+    const queued = fakeTemporal();
+    await service(queued.temporal, repo('QUEUE')).changeDate('org-1', A, '2026-12-01T09:00:00.000Z', 'schedule');
+    expect(queued.temporal.client.getRawClient().workflow.start).toHaveBeenCalledTimes(1);
+    const draft = fakeTemporal();
+    await service(draft.temporal, repo('DRAFT')).changeDate('org-1', A, '2026-12-01T09:00:00.000Z', 'schedule');
+    expect(draft.temporal.client.getRawClient().workflow.start).not.toHaveBeenCalled();
+  });
+});
