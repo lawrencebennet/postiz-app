@@ -905,40 +905,67 @@ export class PostsService {
   }
 
   async deletePost(orgId: string, group: string) {
+    // Neptive: a group has one root per channel, but the repository returns
+    // only one of them; collect every root first (before they are marked
+    // deleted) so the workflow of each channel is terminated
+    let groupRoots: string[] = [];
+    try {
+      groupRoots = (await this._postRepository.getPostsByGroup(orgId, group))
+        .filter((p) => !p.parentPostId)
+        .map((p) => p.id);
+    } catch (err) {}
+
     const post = await this._postRepository.deletePost(orgId, group);
 
     if (post?.id) {
-      try {
-        const workflows = this._temporalService.client
-          .getRawClient()
-          ?.workflow.list({
-            query: `postId="${post.id}" AND ExecutionStatus="Running"`,
-          });
-
-        for await (const executionInfo of workflows) {
-          // Neptive: postId is a TEXT search attribute (full-text match), skip other posts
-          if (!isOwnPostWorkflow(executionInfo.workflowId, post.id)) {
-            continue;
-          }
-          try {
-            const workflow =
-              await this._temporalService.client.getWorkflowHandle(
-                executionInfo.workflowId
-              );
-            if (
-              workflow &&
-              (await workflow.describe()).status.name !== 'TERMINATED'
-            ) {
-              await workflow.terminate();
-            }
-          } catch (err) {}
-        }
-      } catch (err) {}
+      for (const rootId of Array.from(new Set([post.id, ...groupRoots]))) {
+        await this.terminatePostWorkflows(rootId);
+      }
 
       return { id: post.id };
     }
 
     return { error: true };
+  }
+
+  private async terminatePostWorkflows(postId: string) {
+    try {
+      const workflows = this._temporalService.client
+        .getRawClient()
+        ?.workflow.list({
+          query: `postId="${postId}" AND ExecutionStatus="Running"`,
+        });
+
+      for await (const executionInfo of workflows) {
+        // Neptive: postId is a TEXT search attribute (full-text match), skip other posts
+        if (!isOwnPostWorkflow(executionInfo.workflowId, postId)) {
+          continue;
+        }
+        try {
+          const workflow =
+            await this._temporalService.client.getWorkflowHandle(
+              executionInfo.workflowId
+            );
+          if (
+            workflow &&
+            (await workflow.describe()).status.name !== 'TERMINATED'
+          ) {
+            await workflow.terminate();
+          }
+        } catch (err) {}
+      }
+    } catch (err) {}
+
+    // Neptive: the visibility list lags (a workflow started seconds ago is not
+    // listed yet): also stop post_<id> by its id
+    try {
+      const workflow = await this._temporalService.client.getWorkflowHandle(
+        `post_${postId}`
+      );
+      if (workflow && (await workflow.describe()).status.name === 'RUNNING') {
+        await workflow.terminate();
+      }
+    } catch (err) {}
   }
 
   async countPostsFromDay(orgId: string, date: Date) {

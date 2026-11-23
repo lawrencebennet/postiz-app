@@ -28,7 +28,8 @@ jest.mock('nestjs-temporal-core', () => ({ TemporalService: class {} }));
 
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 
-type Run = { workflowId: string; postId: string; running: boolean };
+// hidden = started a moment ago, not in the visibility index yet
+type Run = { workflowId: string; postId: string; running: boolean; hidden?: boolean };
 
 /** Temporal with TEXT-attribute visibility: postId="x" matches any run sharing a token with x. */
 function fakeTemporal(initial: Run[] = []) {
@@ -41,7 +42,8 @@ function fakeTemporal(initial: Run[] = []) {
         const wanted = tokens(/postId="([^"]+)"/.exec(query)![1]);
         const onlyRunning = /ExecutionStatus="Running"/.test(query);
         const hits = runs.filter(
-          (run) => (!onlyRunning || run.running) && tokens(run.postId).some((token) => wanted.includes(token))
+          (run) =>
+            !run.hidden && (!onlyRunning || run.running) && tokens(run.postId).some((token) => wanted.includes(token))
         );
         return (async function* () {
           for (const run of hits) yield { workflowId: run.workflowId };
@@ -130,9 +132,38 @@ describe('PostsService workflow termination is scoped to the post (upstream dive
       { workflowId: `post_${A}`, postId: A, running: true },
       { workflowId: `post_${C}`, postId: C, running: true },
     ]);
-    const repository = { deletePost: jest.fn().mockResolvedValue({ id: A }) };
+    const repository = {
+      getPostsByGroup: jest.fn().mockResolvedValue([{ id: A, parentPostId: null }]),
+      deletePost: jest.fn().mockResolvedValue({ id: A }),
+    };
     await service(fake.temporal, repository).deletePost('org-1', 'group-a');
     expect(fake.running(`post_${A}`)).toBe(false);
     expect(fake.running(`post_${C}`)).toBe(true);
   });
+
+  it('deleting a multi-channel group stops the workflows of EVERY root (and their repeat children)', async () => {
+    const fake = fakeTemporal([
+      { workflowId: `post_${A}`, postId: A, running: true },
+      { workflowId: `post_${A}_k3j4h5g6f7`, postId: A, running: true },
+      // the Facebook twin, scheduled a second ago: not listed by the visibility query yet
+      { workflowId: `post_${B}`, postId: B, running: true, hidden: true },
+      { workflowId: `post_${C}`, postId: C, running: true },
+    ]);
+    const repository = {
+      getPostsByGroup: jest.fn().mockResolvedValue([
+        { id: A, parentPostId: null },
+        { id: B, parentPostId: null },
+        { id: 'comment-of-a', parentPostId: A },
+      ]),
+      // upstream returns ONE root of the group
+      deletePost: jest.fn().mockResolvedValue({ id: A }),
+    };
+    const result = await service(fake.temporal, repository).deletePost('org-1', 'group-ab');
+    expect(result).toEqual({ id: A });
+    expect(fake.running(`post_${A}`)).toBe(false);
+    expect(fake.running(`post_${A}_k3j4h5g6f7`)).toBe(false);
+    expect(fake.running(`post_${B}`)).toBe(false);
+    expect(fake.running(`post_${C}`)).toBe(true);
+  });
 });
+
