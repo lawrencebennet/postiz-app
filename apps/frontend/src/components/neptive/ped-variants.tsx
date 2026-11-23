@@ -99,6 +99,31 @@ const shortDateTime = (value?: string | null) => {
 export const slotScheduledAt = (item: PedCalendarItem) =>
   item.content?.scheduledAt || '';
 
+// once the approved posts are queued in Postiz: "Verrà pubblicato il 24 novembre alle 10:00."
+// (earliest queued channel, Rome clock: the scheduling rule is on Europe/Rome)
+const scheduledLine = (variant: PedVariant) => {
+  const content = variant.content;
+  const channels: Array<{ publishingState: string; scheduledAt: string }> =
+    content?.variants?.length ? content.variants : content ? [content] : [];
+  const first = channels
+    .filter((channel) => channel.publishingState === 'QUEUE')
+    .map((channel) => asDate(channel.scheduledAt))
+    .filter((date): date is Date => !!date)
+    .sort((a, b) => a.getTime() - b.getTime())[0];
+  if (!first) return null;
+  const day = new Intl.DateTimeFormat('it-IT', {
+    timeZone: 'Europe/Rome',
+    day: 'numeric',
+    month: 'long',
+  }).format(first);
+  const time = new Intl.DateTimeFormat('it-IT', {
+    timeZone: 'Europe/Rome',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(first);
+  return `Verrà pubblicato il ${day} alle ${time}.`;
+};
+
 export const sortSlotsByDate = (items: PedCalendarItem[]) =>
   items
     .slice()
@@ -217,6 +242,7 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
         <div className="nx-banner" data-tone="good">
           <strong>Contenuto approvato</strong>
           {variant.approval?.approvedAt ? ` il ${shortDateTime(variant.approval.approvedAt)}` : ''}.
+          {scheduledLine(variant) && <div className="mt-[4px]">{scheduledLine(variant)}</div>}
         </div>
       );
     }
@@ -236,6 +262,7 @@ const StatusBanner: FC<{ item: PedCalendarItem; variant: PedVariant }> = ({
         {item.slot?.confirmedAt ? ` il ${shortDateTime(item.slot.confirmedAt)}` : ''}.
         {(item.variants || []).length > 1 &&
           ' Le altre varianti restano visibili come storico.'}
+        {scheduledLine(variant) && <div className="mt-[4px]">{scheduledLine(variant)}</div>}
       </div>
     );
   }
