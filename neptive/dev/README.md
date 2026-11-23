@@ -74,6 +74,9 @@ node neptive/dev/qa-variants.mjs      # re-seeds, drives agency + client at 1440
                                       # screenshots + log in .data/shots/variants/, API refusal checks
 neptive/dev/gate-check.sh <postId>…   # runs the real post workflow v1.1.2 on the local Temporal with fake
                                       # activities and the real publish gate; prints whether the provider was called
+node neptive/dev/schedule-check.mjs   # approval -> scheduling e2e against the running local backend + Temporal
+                                      # (stops/starts pzn-temporal once; SKIP_TEMPORAL_DOWN=1 to skip). See
+                                      # neptive/docs/approval-scheduling.md
 ```
 
 The existing single-post items are not touched by the seed. Loading variants by SQL: `neptive/docs/variants-loading.md`.
