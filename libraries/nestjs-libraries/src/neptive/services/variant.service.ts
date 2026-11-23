@@ -379,7 +379,7 @@ export class NeptiveVariantService {
     if (usedAsVariant && !usedAsVariant.removedAt) {
       throw new BadRequestException('This post is already a variant of this slot');
     }
-    const linkedItems = await this.variants.liveItemsByGroup(orgId, postGroup);
+    const linkedItems = await this.variants.liveItemsByGroup(orgId, customerId, postGroup);
     if (linkedItems.some((linked) => linked.id !== item.id)) {
       throw new BadRequestException(
         `This post is already linked to plan item "${linkedItems[0].title}"`

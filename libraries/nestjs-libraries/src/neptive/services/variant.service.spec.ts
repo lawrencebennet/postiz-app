@@ -200,6 +200,12 @@ describe('variant agency actions', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it('attach checks other plan items of the same customer only', async () => {
+    const { service, variants } = setup({ itemRow: item({ postGroup: 'g-legacy' }) });
+    await service.attach('org-1', 'customer-1', 'plan-1', 'item-1', USER, { postGroup: 'g-new' });
+    expect(variants.liveItemsByGroup).toHaveBeenCalledWith('org-1', 'customer-1', 'g-new');
+  });
+
   it('first attach on a legacy item turns its post into variant A, the new one into B', async () => {
     const { service, variants } = setup({ itemRow: item({ postGroup: 'g-legacy' }) });
     await service.attach('org-1', 'customer-1', 'plan-1', 'item-1', USER, { postGroup: 'g-new' });

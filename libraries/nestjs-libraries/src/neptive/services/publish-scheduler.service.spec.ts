@@ -153,6 +153,12 @@ describe('scheduling an approved post group', () => {
     expect(state()).toEqual({ 'ig-1': 'QUEUE', 'fb-1': 'QUEUE' });
   });
 
+  it('single-content PED item: the item lookup is scoped to the customer', async () => {
+    const { scheduler, variants } = setup({ variant: null, liveItems: [{ id: 'item-1', title: 'Post', planId: 'p' }] });
+    await scheduler.scheduleApproved(INPUT, NOW);
+    expect(variants.liveItemsByGroup).toHaveBeenCalledWith('org-1', 'customer-1', 'g-B');
+  });
+
   it('a group that is neither a variant nor on a PED item keeps today\'s behaviour: nothing scheduled', async () => {
     const { scheduler, postiz, repo, state } = setup({ variant: null, liveItems: [] });
     const result = await scheduler.scheduleApproved(INPUT, NOW);
@@ -308,6 +314,20 @@ describe('unscheduling a reopened slot', () => {
     const { scheduler, postiz } = setup({ posts: [post('ig-1', 'PUBLISHED')] });
     expect((await scheduler.unscheduleReopened(INPUT)).status).toBe('NOTHING_TO_DO');
     expect(postiz.unschedulePost).not.toHaveBeenCalled();
+  });
+
+  it('a group with a post of another customer is not touched on reopen, agency activity instead', async () => {
+    const { scheduler, postiz, repo, state } = setup({
+      posts: [
+        post('ig-1', 'QUEUE'),
+        post('fb-1', 'QUEUE', { integration: { customerId: 'customer-2', name: 'x', providerIdentifier: 'facebook' } }),
+      ],
+    });
+    const result = await scheduler.unscheduleReopened(INPUT);
+    expect(result.status).toBe('FAILED');
+    expect(postiz.unschedulePost).not.toHaveBeenCalled();
+    expect(state()).toEqual({ 'ig-1': 'QUEUE', 'fb-1': 'QUEUE' });
+    expect(repo.createActivity.mock.calls[0][0]).toMatchObject({ type: 'OTHER', visibility: 'INTERNAL' });
   });
 
   it('a workflow still running after the change is reported to the agency', async () => {

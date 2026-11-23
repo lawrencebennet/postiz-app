@@ -40,10 +40,14 @@ export class NeptiveVariantRepository {
     });
   }
 
-  /** Live plan items of this org (any plan) linked to a group the legacy way. */
-  liveItemsByGroup(orgId: string, postGroup: string) {
+  /** Live plan items of this org AND customer (any plan) linked to a group the legacy way. */
+  liveItemsByGroup(orgId: string, customerId: string, postGroup: string) {
     return this.prisma.neptiveEditorialPlanItem.findMany({
-      where: { postGroup, deletedAt: null, plan: { orgId, deletedAt: null } },
+      where: {
+        postGroup,
+        deletedAt: null,
+        plan: { orgId, customerId, deletedAt: null },
+      },
       select: { id: true, title: true, planId: true },
     });
   }

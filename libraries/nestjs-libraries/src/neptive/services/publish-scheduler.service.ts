@@ -98,7 +98,11 @@ export class NeptivePublishScheduler {
       }
       return 'VARIANT' as const;
     }
-    const items = await this.variants.liveItemsByGroup(input.orgId, input.postGroup);
+    const items = await this.variants.liveItemsByGroup(
+      input.orgId,
+      input.customerId,
+      input.postGroup
+    );
     return items.length ? ('PED_ITEM' as const) : null;
   }
 
@@ -225,6 +229,11 @@ export class NeptivePublishScheduler {
     const title = input.title || 'contenuto';
     try {
       const posts = (await this.postiz.postsByGroup(input.orgId, input.postGroup)) as GroupPost[];
+      if (posts.some((post) => post.integration?.customerId !== input.customerId)) {
+        throw new SchedulingRefused(
+          'il contenuto contiene post di un altro cliente: nessun post è stato toccato'
+        );
+      }
       const queued = posts.filter((post) => !post.parentPostId && post.state === 'QUEUE');
       if (!queued.length) {
         return { status: 'NOTHING_TO_DO' };
