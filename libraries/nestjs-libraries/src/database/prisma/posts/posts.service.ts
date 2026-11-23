@@ -60,6 +60,12 @@ import { postContentPlainText } from '@gitroom/helpers/utils/sanitize.post.conte
 import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
 import { countLength } from '@gitroom/helpers/utils/count.length';
 
+// Neptive: `postId="<id>"` on the TEXT search attribute also lists workflows of
+// other posts sharing any hyphen token of the id. Only post_<id> (startWorkflow)
+// and post_<id>_<suffix> (repeat-post children) belong to this post.
+const isOwnPostWorkflow = (workflowId: string, postId: string) =>
+  workflowId === `post_${postId}` || workflowId.startsWith(`post_${postId}_`);
+
 type PostWithConditionals = Post & {
   integration?: Integration;
   childrenPost: Post[];
@@ -910,6 +916,10 @@ export class PostsService {
           });
 
         for await (const executionInfo of workflows) {
+          // Neptive: postId is a TEXT search attribute (full-text match), skip other posts
+          if (!isOwnPostWorkflow(executionInfo.workflowId, post.id)) {
+            continue;
+          }
           try {
             const workflow =
               await this._temporalService.client.getWorkflowHandle(
@@ -953,6 +963,10 @@ export class PostsService {
         });
 
       for await (const executionInfo of workflows) {
+        // Neptive: postId is a TEXT search attribute (full-text match), skip other posts
+        if (!isOwnPostWorkflow(executionInfo.workflowId, postId)) {
+          continue;
+        }
         try {
           const workflow = await this._temporalService.client.getWorkflowHandle(
             executionInfo.workflowId

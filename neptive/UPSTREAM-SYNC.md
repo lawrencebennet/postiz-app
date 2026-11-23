@@ -60,6 +60,7 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 | `apps/frontend/src/components/layout/top.menu.tsx` | "Agency" menu item | auto-merged |
 | `libraries/helpers/src/utils/custom.fetch.func.ts` | send `neptive-portal` header in NOT_SECURED mode | auto-merged |
 | `libraries/nestjs-libraries/src/temporal/temporal.module.ts` | import + `interceptors` line in the worker `workerOptions` (variant publish gate) | new on `neptive-next` (post variants) |
+| `libraries/nestjs-libraries/src/database/prisma/posts/posts.service.ts` | `isOwnPostWorkflow` helper + a `continue` guard in the terminate loops of `startWorkflow` and `deletePost` (see "Deliberate divergences") | new on `neptive-next` (approval scheduling); upstream edits this file often, keep the guard in both loops |
 | `package.json`, `pnpm-lock.yaml` | `embla-carousel-react` dependency | auto-merged (lockfile verified with `--frozen-lockfile`) |
 | `package.json`, `pnpm-lock.yaml` | **Next 16.4.2 -> 16.4.6** (`next` dependency, `pnpm.overrides.next`, `eslint-config-next`): see "Deliberate divergences" | will conflict if upstream moves `next` on the same lines: keep the higher version |
 | `.gitignore` | ignore Next-generated `apps/frontend/AGENTS.md`/`CLAUDE.md` | auto-merged |
@@ -72,7 +73,7 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 | `apps/backend/src/api/routes/copilot.controller.ts` | `/copilot/chat` and `/copilot/agent` answer 503 when `OPENAI_API_KEY` is missing instead of leaving the request open (2 lines; see "Deliberate divergences") | new (found in the production-image rehearsal) |
 | new files in upstream folders | `apps/frontend/src/app/manifest.ts`, `app/(app)/opengraph-image.png`, `app/(app)/apple-icon.png` | no merge risk unless upstream adds the same files |
 
-**22 upstream files** differ from `upstream/main` (19 modified + 3 new, `package.json`/`pnpm-lock.yaml` counted).
+**23 upstream files** differ from `upstream/main` (20 modified + 3 new, `package.json`/`pnpm-lock.yaml` counted).
 The white-label adds 6 modified + 3 new; it also removed the earlier draft edits of `auth/login/page.tsx`,
 `auth/page.tsx`, `components/auth/register.tsx`, `components/ui/logo-text.component.tsx` (back to upstream).
 How the white-label works and how to check it: `neptive/WHITE-LABEL.md`. `sync-upstream.sh` runs the brand
@@ -90,6 +91,17 @@ check as step 4b.
   request hangs until nginx times out (60 s) and nginx then marks the backend down for ~10 s, so unrelated requests
   get 502. Reproduced on the production image locally (4 portal requests failed with `no live upstreams`). Drop when
   upstream answers or closes the response in that branch.
+
+- **Post workflows are terminated only if they belong to the post** (`posts.service.ts`, `startWorkflow` and
+  `deletePost`). Upstream lists the workflows to terminate with `postId="<id>" AND ExecutionStatus="Running"`, but
+  `postId` is a TEXT search attribute: on Elasticsearch visibility the query is a full-text match, so any workflow whose
+  post id shares one hyphen token with `<id>` is listed and terminated (verified on the local Temporal; for two random
+  uuid v4 about 1 in 4096 share the third group, the seeded/patterned ids share several). The victim post stays `QUEUE`
+  with no workflow, and with `RUN_CRON` unset (production) nothing restarts it: it never publishes. Scheduling the
+  Instagram and Facebook posts of an approved slot back to back is exactly that pattern. The guard keeps only
+  `post_<id>` (startWorkflow) and `post_<id>_<suffix>` (repeat-post children). Spec:
+  `libraries/nestjs-libraries/src/neptive/upstream/posts-workflow-scope.spec.ts` (drives the real methods against a fake
+  client with the fuzzy matching). Drop when upstream matches exactly (KEYWORD attribute, or the same check).
 
 ## What to re-check by hand after each merge (the script cannot)
 
