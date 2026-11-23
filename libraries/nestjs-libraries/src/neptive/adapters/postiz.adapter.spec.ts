@@ -33,13 +33,37 @@ const rawWith = (describe: () => Promise<any>, systemInfo: () => Promise<any> = 
 
 describe('PostizAdapter scheduling bridge', () => {
   it('schedules / unschedules through PostsService.changePostStatus', async () => {
-    const { adapter, posts } = setup(rawWith(async () => ({})));
+    const { adapter, posts } = setup(rawWith(async () => ({ status: { name: 'COMPLETED' } })));
     await adapter.schedulePost('org-1', 'p1');
     await adapter.unschedulePost('org-1', 'p1');
     expect(posts.changePostStatus.mock.calls).toEqual([
       ['org-1', 'p1', 'schedule'],
       ['org-1', 'p1', 'draft'],
     ]);
+  });
+
+  it('unschedule also terminates post_<id> by id: the native draft path finds workflows through an eventually consistent, fuzzy visibility query', async () => {
+    const terminate = jest.fn().mockResolvedValue(undefined);
+    const raw = {
+      workflow: {
+        getHandle: jest.fn(() => ({
+          describe: jest.fn().mockResolvedValue({ status: { name: 'RUNNING' } }),
+          terminate,
+        })),
+      },
+    };
+    const { adapter, posts } = setup(raw);
+    await adapter.unschedulePost('org-1', 'p1');
+    expect(raw.workflow.getHandle).toHaveBeenCalledWith('post_p1');
+    expect(terminate).toHaveBeenCalledTimes(1);
+    expect(posts.changePostStatus.mock.invocationCallOrder[0]).toBeLessThan(terminate.mock.invocationCallOrder[0]);
+
+    const none = setup(
+      rawWith(async () => {
+        throw new WorkflowNotFoundError('not found', 'post_p1', undefined);
+      })
+    );
+    await expect(none.adapter.unschedulePost('org-1', 'p1')).resolves.toBeDefined();
   });
 
   it('moves a date through PostsService.changeDate without changing the state', async () => {

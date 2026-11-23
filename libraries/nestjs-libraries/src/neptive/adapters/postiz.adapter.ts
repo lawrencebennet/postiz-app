@@ -33,8 +33,24 @@ export class PostizAdapter {
     return this.posts.changePostStatus(orgId, postId, 'schedule');
   }
 
-  unschedulePost(orgId: string, postId: string) {
-    return this.posts.changePostStatus(orgId, postId, 'draft');
+  /**
+   * DRAFT through the native path, then make sure post_<id> is stopped.
+   * PostsService finds the workflows to terminate with a visibility query
+   * (`postId="<id>"`): eventually consistent (a workflow started a moment ago is
+   * not listed yet) and, postId being a TEXT search attribute, a full-text match
+   * on any hyphen-separated token of the id. So terminate the exact id as well.
+   */
+  async unschedulePost(orgId: string, postId: string) {
+    const result = await this.posts.changePostStatus(orgId, postId, 'draft');
+    if (await this.postWorkflowRunning(postId)) {
+      await this.withTimeout(
+        this.rawTemporal()
+          .workflow.getHandle(`post_${postId}`)
+          .terminate('Neptive: post back to draft'),
+        'terminate'
+      );
+    }
+    return result;
   }
 
   /** Date only (action 'update'): state and workflow untouched. */

@@ -121,7 +121,7 @@ export class NeptivePublishScheduler {
       try {
         await this.postiz.unschedulePost(orgId, id);
       } catch (err) {
-        problems.push(`post ${id} non riportato in bozza (${message(err)})`);
+        problems.push(`post ${id}: annullamento della programmazione non confermato (${message(err)})`);
         continue;
       }
       try {
