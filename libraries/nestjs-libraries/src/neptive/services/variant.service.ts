@@ -11,6 +11,7 @@ import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repo
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import { NeptiveApprovalService } from '@gitroom/nestjs-libraries/neptive/services/approval.service';
 import { NeptivePublishScheduler } from '@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service';
+import { NeptiveSlotLock } from '@gitroom/nestjs-libraries/neptive/repositories/slot-lock';
 import {
   legacyClientState,
   liveVariants,
@@ -72,7 +73,8 @@ export class NeptiveVariantService {
     private variants: NeptiveVariantRepository,
     private postiz: PostizAdapter,
     private approvals: NeptiveApprovalService,
-    private scheduler: NeptivePublishScheduler
+    private scheduler: NeptivePublishScheduler,
+    private slotLock: NeptiveSlotLock
   ) {}
 
   // ---------------------------------------------------------------- projection
@@ -562,8 +564,25 @@ export class NeptiveVariantService {
     return this.getItem(orgId, customerId, planId, itemId);
   }
 
-  /** Agency only: undo a confirmation so the client can choose again. */
+  /**
+   * Agency only: undo a confirmation so the client can choose again. The whole
+   * reopen (transaction + unscheduling) runs under the slot lock, like an
+   * approval, and re-reads the slot inside it.
+   */
   async reopen(
+    orgId: string,
+    customerId: string,
+    planId: string,
+    itemId: string,
+    user: Actor,
+    body: ReopenNeptiveSlotDto
+  ) {
+    return this.slotLock.run([itemId], () =>
+      this.reopenInSlot(orgId, customerId, planId, itemId, user, body)
+    );
+  }
+
+  private async reopenInSlot(
     orgId: string,
     customerId: string,
     planId: string,

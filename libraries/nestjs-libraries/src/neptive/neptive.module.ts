@@ -13,12 +13,14 @@ import { NeptiveDashboardService } from '@gitroom/nestjs-libraries/neptive/servi
 import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
 import { NeptiveVariantService } from '@gitroom/nestjs-libraries/neptive/services/variant.service';
 import { NeptivePublishScheduler } from '@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service';
+import { NeptiveSlotLock } from '@gitroom/nestjs-libraries/neptive/repositories/slot-lock';
 
 const providers = [
   NeptiveRepository,
   NeptiveVariantRepository,
   PostizAdapter,
   NeptivePublishScheduler,
+  NeptiveSlotLock,
   NeptiveClientService,
   NeptivePortalAuthService,
   NeptivePedService,

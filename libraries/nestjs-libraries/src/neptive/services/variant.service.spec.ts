@@ -13,6 +13,7 @@ jest.mock('@gitroom/nestjs-libraries/neptive/services/approval.service', () => (
 jest.mock('@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service', () => ({
   NeptivePublishScheduler: class {},
 }));
+jest.mock('@gitroom/nestjs-libraries/neptive/repositories/slot-lock', () => ({ NeptiveSlotLock: class {} }));
 
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { NeptiveVariantService } from './variant.service';
@@ -112,7 +113,8 @@ function setup(opts: {
     variants as any,
     postiz as any,
     approvalService as any,
-    scheduler as any
+    scheduler as any,
+    { run: (_ids: string[], work: () => Promise<unknown>) => work() } as any
   );
   return { service, repo, variants, postiz, approvalService, scheduler };
 }

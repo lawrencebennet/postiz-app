@@ -103,7 +103,28 @@ export class NeptivePublishScheduler {
       input.customerId,
       input.postGroup
     );
-    return items.length ? ('PED_ITEM' as const) : null;
+    if (!items.length) {
+      return null;
+    }
+    // single-content item: re-read its approval (a reopen may have landed)
+    if (!(await this.legacyApproved(input))) {
+      throw new SchedulingRefused("l'approvazione di questo contenuto non risulta più valida");
+    }
+    return 'PED_ITEM' as const;
+  }
+
+  private async legacyApproved(input: GroupInput) {
+    const approval = await this.repo.approvalByGroup(input.orgId, input.postGroup);
+    return approval?.customerId === input.customerId && approval.status === 'APPROVED';
+  }
+
+  /** Re-read at unscheduling time: is the group (again) the confirmed content of its slot? */
+  private async stillConfirmed(input: GroupInput) {
+    const variant = await this.variants.variantByGroup(input.orgId, input.postGroup);
+    if (variant) {
+      return variantMayPublish({ variant, slot: variant.item });
+    }
+    return this.legacyApproved(input);
   }
 
   private async loadRoots(input: GroupInput) {
@@ -237,6 +258,10 @@ export class NeptivePublishScheduler {
       const queued = posts.filter((post) => !post.parentPostId && post.state === 'QUEUE');
       if (!queued.length) {
         return { status: 'NOTHING_TO_DO' };
+      }
+      if (await this.stillConfirmed(input)) {
+        // confirmed again after the reopen: the later decision wins
+        return { status: 'SKIPPED', reason: 'confirmed again' };
       }
       const problems = await this.rollback(
         input.orgId,

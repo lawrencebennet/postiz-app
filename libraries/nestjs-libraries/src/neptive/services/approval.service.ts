@@ -18,6 +18,7 @@ import { canTransitionApproval } from '@gitroom/nestjs-libraries/neptive/domain/
 import { notFoundIfMissing } from '@gitroom/nestjs-libraries/neptive/domain/scope';
 import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
 import { NeptivePublishScheduler } from '@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service';
+import { NeptiveSlotLock } from '@gitroom/nestjs-libraries/neptive/repositories/slot-lock';
 import {
   VARIANT_REFUSAL_MESSAGES,
   checkVariantAction,
@@ -52,7 +53,8 @@ export class NeptiveApprovalService {
     private activities: NeptiveActivityService,
     private postiz: PostizAdapter,
     private variants: NeptiveVariantRepository,
-    private scheduler: NeptivePublishScheduler
+    private scheduler: NeptivePublishScheduler,
+    private slotLock: NeptiveSlotLock
   ) {}
 
   /**
@@ -176,7 +178,36 @@ export class NeptiveApprovalService {
     return this.get(orgId, customerId, created.id);
   }
 
+  /** PED slots (plan item ids) a post group belongs to: the variant's item, or legacy items. */
+  private async slotIdsOf(orgId: string, customerId: string, postGroup: string) {
+    const variant = await this.variants.variantByGroup(orgId, postGroup);
+    if (variant) {
+      return [variant.itemId];
+    }
+    const items = await this.variants.liveItemsByGroup(orgId, customerId, postGroup);
+    return items.map((item) => item.id);
+  }
+
+  /**
+   * The whole decision (transaction + Postiz scheduling) runs under the slot
+   * lock, so an agency reopen of the same slot cannot interleave with it.
+   * Everything is re-read inside the lock.
+   */
   async transition(
+    orgId: string,
+    customerId: string,
+    id: string,
+    body: TransitionNeptiveApprovalDto,
+    actor: { type: NeptiveApprovalActorType; id: string; name: string }
+  ) {
+    const scoped = await this.getOrForbid(orgId, customerId, id);
+    const slots = await this.slotIdsOf(orgId, customerId, scoped.postGroup);
+    return this.slotLock.run(slots, () =>
+      this.transitionInSlot(orgId, customerId, id, body, actor)
+    );
+  }
+
+  private async transitionInSlot(
     orgId: string,
     customerId: string,
     id: string,

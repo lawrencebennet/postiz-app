@@ -56,6 +56,7 @@ function setup(opts: {
   variant?: any;
   liveItems?: any[];
   running?: (postId: string) => boolean | Promise<boolean>;
+  approval?: any;
 } = {}) {
   // a tiny in-memory Postiz: state changes only through the adapter calls
   const posts = (opts.posts || [post('ig-1', 'DRAFT'), post('fb-1', 'DRAFT')]).map((row) => ({ ...row }));
@@ -82,7 +83,12 @@ function setup(opts: {
     variantByGroup: jest.fn().mockResolvedValue(opts.variant === undefined ? confirmedVariant() : opts.variant),
     liveItemsByGroup: jest.fn().mockResolvedValue(opts.liveItems || []),
   };
-  const repo = { createActivity: jest.fn().mockResolvedValue(undefined) };
+  const repo = {
+    createActivity: jest.fn().mockResolvedValue(undefined),
+    approvalByGroup: jest.fn().mockResolvedValue(
+      opts.approval === undefined ? { customerId: 'customer-1', status: 'APPROVED' } : opts.approval
+    ),
+  };
   const scheduler = new NeptivePublishScheduler(repo as any, variants as any, postiz as any);
   const state = () => Object.fromEntries(posts.map((row) => [row.id, row.state]));
   return { scheduler, postiz, variants, repo, posts, state };
@@ -151,6 +157,17 @@ describe('scheduling an approved post group', () => {
     const result = await scheduler.scheduleApproved(INPUT, NOW);
     expect(result.status).toBe('SCHEDULED');
     expect(state()).toEqual({ 'ig-1': 'QUEUE', 'fb-1': 'QUEUE' });
+  });
+
+  it('single-content PED item whose approval is no longer APPROVED (reopened meanwhile): refused', async () => {
+    const { scheduler, postiz } = setup({
+      variant: null,
+      liveItems: [{ id: 'item-1', title: 'Post', planId: 'p' }],
+      approval: { customerId: 'customer-1', status: 'PENDING_CLIENT_APPROVAL' },
+    });
+    const result = await scheduler.scheduleApproved(INPUT, NOW);
+    expect(result.status).toBe('FAILED');
+    expect(postiz.schedulePost).not.toHaveBeenCalled();
   });
 
   it('single-content PED item: the item lookup is scoped to the customer', async () => {
@@ -301,6 +318,7 @@ describe('scheduling an approved post group', () => {
 describe('unscheduling a reopened slot', () => {
   it('QUEUE roots go back to DRAFT through the native path; PUBLISHED / ERROR / DRAFT untouched', async () => {
     const { scheduler, postiz, repo, state } = setup({
+      variant: confirmedVariant(null),
       posts: [post('ig-1', 'QUEUE'), post('fb-1', 'PUBLISHED'), post('fb-2', 'ERROR'), post('fb-3', 'DRAFT')],
     });
     const result = await scheduler.unscheduleReopened(INPUT);
@@ -311,13 +329,28 @@ describe('unscheduling a reopened slot', () => {
   });
 
   it('nothing queued: nothing to do', async () => {
-    const { scheduler, postiz } = setup({ posts: [post('ig-1', 'PUBLISHED')] });
+    const { scheduler, postiz } = setup({ variant: confirmedVariant(null), posts: [post('ig-1', 'PUBLISHED')] });
     expect((await scheduler.unscheduleReopened(INPUT)).status).toBe('NOTHING_TO_DO');
     expect(postiz.unschedulePost).not.toHaveBeenCalled();
   });
 
+  it('the slot was confirmed again before the unscheduling ran: posts stay queued', async () => {
+    const confirmedAgain = setup({ posts: [post('ig-1', 'QUEUE')] }); // default variant = confirmed vb
+    expect((await confirmedAgain.scheduler.unscheduleReopened(INPUT)).status).toBe('SKIPPED');
+    expect(confirmedAgain.postiz.unschedulePost).not.toHaveBeenCalled();
+
+    const legacyApproved = setup({
+      posts: [post('ig-1', 'QUEUE')],
+      variant: null,
+      approval: { customerId: 'customer-1', status: 'APPROVED' },
+    });
+    expect((await legacyApproved.scheduler.unscheduleReopened(INPUT)).status).toBe('SKIPPED');
+    expect(legacyApproved.postiz.unschedulePost).not.toHaveBeenCalled();
+  });
+
   it('a group with a post of another customer is not touched on reopen, agency activity instead', async () => {
     const { scheduler, postiz, repo, state } = setup({
+      variant: confirmedVariant(null),
       posts: [
         post('ig-1', 'QUEUE'),
         post('fb-1', 'QUEUE', { integration: { customerId: 'customer-2', name: 'x', providerIdentifier: 'facebook' } }),
@@ -331,7 +364,7 @@ describe('unscheduling a reopened slot', () => {
   });
 
   it('a workflow still running after the change is reported to the agency', async () => {
-    const { scheduler, repo } = setup({ posts: [post('ig-1', 'QUEUE')], running: () => true });
+    const { scheduler, repo } = setup({ variant: confirmedVariant(null), posts: [post('ig-1', 'QUEUE')], running: () => true });
     const result = await scheduler.unscheduleReopened(INPUT);
     expect(result.status).toBe('FAILED');
     expect(repo.createActivity.mock.calls[0][0]).toMatchObject({ type: 'OTHER', visibility: 'INTERNAL' });
@@ -339,7 +372,7 @@ describe('unscheduling a reopened slot', () => {
   });
 
   it('never throws', async () => {
-    const { scheduler, postiz } = setup({ posts: [post('ig-1', 'QUEUE')] });
+    const { scheduler, postiz } = setup({ variant: confirmedVariant(null), posts: [post('ig-1', 'QUEUE')] });
     postiz.unschedulePost.mockRejectedValue(new Error('db down'));
     await expect(scheduler.unscheduleReopened(INPUT)).resolves.toMatchObject({ status: 'FAILED' });
   });

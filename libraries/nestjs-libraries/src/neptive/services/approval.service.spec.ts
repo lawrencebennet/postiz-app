@@ -16,6 +16,7 @@ jest.mock('@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter', () => ({
 jest.mock('@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service', () => ({
   NeptivePublishScheduler: class {},
 }));
+jest.mock('@gitroom/nestjs-libraries/neptive/repositories/slot-lock', () => ({ NeptiveSlotLock: class {} }));
 
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { NeptiveApprovalService } from './approval.service';
@@ -75,7 +76,9 @@ function setup(approval = approvalRow(), variant: any = null) {
     variantByGroup: jest.fn().mockResolvedValue(variant),
     variantsByGroups: jest.fn().mockResolvedValue(variant ? [variant] : []),
     confirmVariant: jest.fn().mockResolvedValue(undefined),
+    liveItemsByGroup: jest.fn().mockResolvedValue([]),
   };
+  const slotLock = { run: jest.fn((_ids: string[], work: () => Promise<unknown>) => work()) };
   const scheduler = {
     scheduleApproved: jest.fn().mockResolvedValue({ status: 'SCHEDULED' }),
   };
@@ -85,9 +88,10 @@ function setup(approval = approvalRow(), variant: any = null) {
     activities as any,
     postiz as any,
     variants as any,
-    scheduler as any
+    scheduler as any,
+    slotLock as any
   );
-  return { service, repo, activities, postiz, variants, scheduler };
+  return { service, repo, activities, postiz, variants, scheduler, slotLock };
 }
 
 describe('Neptive approval service', () => {
@@ -165,6 +169,31 @@ describe('Neptive approval service', () => {
     await expect(
       comment.service.transition('org-1', 'customer-1', 'approval-1', { status: 'CHANGES_REQUESTED', comment: 'x' } as any, CLIENT)
     ).resolves.toMatchObject({ id: 'approval-1' });
+  });
+
+  it('the decision runs inside the slot lock: variant -> its item, single content -> its PED items', async () => {
+    const variantCase = setup(approvalRow(), variantRow(null));
+    let inside = false;
+    variantCase.slotLock.run.mockImplementation(async (_ids: string[], work: () => Promise<unknown>) => {
+      inside = true;
+      try {
+        return await work();
+      } finally {
+        inside = false;
+      }
+    });
+    variantCase.variants.confirmVariant.mockImplementation(async () => {
+      expect(inside).toBe(true);
+    });
+    await variantCase.service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT);
+    expect(variantCase.slotLock.run.mock.calls[0][0]).toEqual(['item-1']);
+    expect(variantCase.variants.confirmVariant).toHaveBeenCalled();
+
+    const single = setup();
+    single.variants.liveItemsByGroup.mockResolvedValue([{ id: 'item-9' }]);
+    await single.service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT);
+    expect(single.variants.liveItemsByGroup).toHaveBeenCalledWith('org-1', 'customer-1', 'group-1');
+    expect(single.slotLock.run.mock.calls[0][0]).toEqual(['item-9']);
   });
 
   it('a scheduling failure does not undo nor fail the approval', async () => {
