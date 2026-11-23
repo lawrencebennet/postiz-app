@@ -9,6 +9,7 @@ import { NeptiveRepository } from '@gitroom/nestjs-libraries/neptive/repositorie
 import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import { NeptiveApprovalService } from '@gitroom/nestjs-libraries/neptive/services/approval.service';
+import { NeptivePublishScheduler } from '@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service';
 import {
   legacyClientState,
   liveVariants,
@@ -67,7 +68,8 @@ export class NeptiveVariantService {
     private repo: NeptiveRepository,
     private variants: NeptiveVariantRepository,
     private postiz: PostizAdapter,
-    private approvals: NeptiveApprovalService
+    private approvals: NeptiveApprovalService,
+    private scheduler: NeptivePublishScheduler
   ) {}
 
   // ---------------------------------------------------------------- projection
@@ -598,6 +600,15 @@ export class NeptiveVariantService {
       approvalId: approval.id,
       actor: { type: 'AGENCY_USER', id: user.id },
       comment,
+    });
+    // reopen committed: take the previously confirmed posts out of the queue
+    // (QUEUE -> DRAFT, workflow terminated; PUBLISHED / ERROR untouched). Never
+    // throws; a failure writes an agency-only activity.
+    await this.scheduler.unscheduleReopened({
+      orgId,
+      customerId,
+      postGroup: postGroup!,
+      title: item.title,
     });
     await this.repo.createActivity({
       orgId,

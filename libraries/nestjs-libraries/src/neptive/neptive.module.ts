@@ -12,11 +12,13 @@ import { NeptiveReportService } from '@gitroom/nestjs-libraries/neptive/services
 import { NeptiveDashboardService } from '@gitroom/nestjs-libraries/neptive/services/dashboard.service';
 import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
 import { NeptiveVariantService } from '@gitroom/nestjs-libraries/neptive/services/variant.service';
+import { NeptivePublishScheduler } from '@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service';
 
 const providers = [
   NeptiveRepository,
   NeptiveVariantRepository,
   PostizAdapter,
+  NeptivePublishScheduler,
   NeptiveClientService,
   NeptivePortalAuthService,
   NeptivePedService,

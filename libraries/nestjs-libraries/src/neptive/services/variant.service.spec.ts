@@ -10,6 +10,9 @@ jest.mock('@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter', () => ({
 jest.mock('@gitroom/nestjs-libraries/neptive/services/approval.service', () => ({
   NeptiveApprovalService: class {},
 }));
+jest.mock('@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service', () => ({
+  NeptivePublishScheduler: class {},
+}));
 
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { NeptiveVariantService } from './variant.service';
@@ -103,13 +106,15 @@ function setup(opts: {
     assertPostGroupBelongsToCustomer: jest.fn().mockResolvedValue([{}]),
   };
   const approvalService = { transition: jest.fn() };
+  const scheduler = { unscheduleReopened: jest.fn().mockResolvedValue({ status: 'UNSCHEDULED' }) };
   const service = new NeptiveVariantService(
     repo as any,
     variants as any,
     postiz as any,
-    approvalService as any
+    approvalService as any,
+    scheduler as any
   );
-  return { service, repo, variants, postiz, approvalService };
+  return { service, repo, variants, postiz, approvalService, scheduler };
 }
 
 describe('variant projection', () => {
@@ -250,8 +255,46 @@ describe('variant agency actions', () => {
     );
   });
 
+  it('reopen unschedules the posts of the variant that was confirmed, after the reopen is committed', async () => {
+    const { service, variants, scheduler } = setup({
+      itemRow: item({ variants: [row('va', 'A', 0), row('vb', 'B', 1)], confirmedVariantId: 'vb' }),
+      approvals: { 'g-B': approval('g-B', 'APPROVED') },
+    });
+    await service.reopen('org-1', 'customer-1', 'plan-1', 'item-1', USER, {});
+    expect(scheduler.unscheduleReopened).toHaveBeenCalledWith({
+      orgId: 'org-1',
+      customerId: 'customer-1',
+      postGroup: 'g-B',
+      title: 'Reel New Life',
+    });
+    expect(variants.reopen.mock.invocationCallOrder[0]).toBeLessThan(
+      scheduler.unscheduleReopened.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('reopen of a single-content item unschedules its group', async () => {
+    const { service, scheduler } = setup({
+      itemRow: item({ postGroup: 'g-legacy' }),
+      approvals: { 'g-legacy': approval('g-legacy', 'APPROVED') },
+    });
+    await service.reopen('org-1', 'customer-1', 'plan-1', 'item-1', USER, {});
+    expect(scheduler.unscheduleReopened).toHaveBeenCalledWith(expect.objectContaining({ postGroup: 'g-legacy' }));
+  });
+
+  it('a reopen that fails unschedules nothing', async () => {
+    const { service, variants, scheduler } = setup({
+      itemRow: item({ variants: [row('vb', 'B', 1)], confirmedVariantId: 'vb' }),
+      approvals: { 'g-B': approval('g-B', 'APPROVED') },
+    });
+    variants.reopen.mockRejectedValue(new BadRequestException('Slot was updated concurrently'));
+    await expect(
+      service.reopen('org-1', 'customer-1', 'plan-1', 'item-1', USER, {})
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(scheduler.unscheduleReopened).not.toHaveBeenCalled();
+  });
+
   it('reopen refuses a slot that is not confirmed', async () => {
-    const { service, variants } = setup({
+    const { service, variants, scheduler } = setup({
       itemRow: item({ variants: [row('va', 'A', 0)] }),
       approvals: { 'g-A': approval('g-A', 'PENDING_CLIENT_APPROVAL') },
     });
@@ -259,6 +302,7 @@ describe('variant agency actions', () => {
       service.reopen('org-1', 'customer-1', 'plan-1', 'item-1', USER, {})
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(variants.reopen).not.toHaveBeenCalled();
+    expect(scheduler.unscheduleReopened).not.toHaveBeenCalled();
   });
 
   it('send-to-client walks the approval state machine from changes requested', async () => {

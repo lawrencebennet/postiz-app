@@ -16,6 +16,7 @@ import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz
 import { canTransitionApproval } from '@gitroom/nestjs-libraries/neptive/domain/state-machines';
 import { notFoundIfMissing } from '@gitroom/nestjs-libraries/neptive/domain/scope';
 import { NeptiveVariantRepository } from '@gitroom/nestjs-libraries/neptive/repositories/variant.repository';
+import { NeptivePublishScheduler } from '@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service';
 import {
   VARIANT_REFUSAL_MESSAGES,
   checkVariantAction,
@@ -44,7 +45,8 @@ export class NeptiveApprovalService {
     private clients: NeptiveClientService,
     private activities: NeptiveActivityService,
     private postiz: PostizAdapter,
-    private variants: NeptiveVariantRepository
+    private variants: NeptiveVariantRepository,
+    private scheduler: NeptivePublishScheduler
   ) {}
 
   /**
@@ -239,36 +241,50 @@ export class NeptiveApprovalService {
       }
     }
 
-    await this.repo.addApprovalAction({
-      approvalId: id,
-      actorType: actor.type,
-      actorId: actor.id,
-      action: ACTION_BY_STATUS[body.status as NeptiveApprovalStatus] || 'SUBMITTED',
-      comment: body.comment,
-    });
-
-    if (body.comment?.trim()) {
-      await this.repo.addApprovalComment({
+    try {
+      await this.repo.addApprovalAction({
         approvalId: id,
-        visibility:
-          actor.type === 'CLIENT_USER' ? 'CLIENT_VISIBLE' : 'INTERNAL',
-        authorType: actor.type,
-        authorId: actor.id,
-        authorName: actor.name,
-        body: body.comment,
+        actorType: actor.type,
+        actorId: actor.id,
+        action: ACTION_BY_STATUS[body.status as NeptiveApprovalStatus] || 'SUBMITTED',
+        comment: body.comment,
       });
-    }
 
-    if (body.status === 'APPROVED') {
-      await this.activities.system(orgId, customerId, {
-        type: 'POST_APPROVED',
-        title: variant
-          ? `Variante ${variant.label} confermata${
-              variant.item?.title ? `: ${variant.item.title}` : ''
-            }`
-          : `Content approved${approval.title ? `: ${approval.title}` : ''}`,
-        relatedPostGroup: approval.postGroup,
-      });
+      if (body.comment?.trim()) {
+        await this.repo.addApprovalComment({
+          approvalId: id,
+          visibility:
+            actor.type === 'CLIENT_USER' ? 'CLIENT_VISIBLE' : 'INTERNAL',
+          authorType: actor.type,
+          authorId: actor.id,
+          authorName: actor.name,
+          body: body.comment,
+        });
+      }
+
+      if (body.status === 'APPROVED') {
+        await this.activities.system(orgId, customerId, {
+          type: 'POST_APPROVED',
+          title: variant
+            ? `Variante ${variant.label} confermata${
+                variant.item?.title ? `: ${variant.item.title}` : ''
+              }`
+            : `Content approved${approval.title ? `: ${approval.title}` : ''}`,
+          relatedPostGroup: approval.postGroup,
+        });
+      }
+    } finally {
+      if (body.status === 'APPROVED') {
+        // The approval is committed above: schedule the approved group through
+        // Postiz even if an audit write failed. Never throws; a failure leaves
+        // the posts in DRAFT with an agency-only activity (NeptivePublishScheduler).
+        await this.scheduler.scheduleApproved({
+          orgId,
+          customerId,
+          postGroup: approval.postGroup,
+          title: variant?.item?.title || approval.title,
+        });
+      }
     }
 
     return this.get(orgId, customerId, id);

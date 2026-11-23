@@ -13,6 +13,9 @@ jest.mock('@gitroom/nestjs-libraries/neptive/services/activity.service', () => (
 jest.mock('@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter', () => ({
   PostizAdapter: class {},
 }));
+jest.mock('@gitroom/nestjs-libraries/neptive/services/publish-scheduler.service', () => ({
+  NeptivePublishScheduler: class {},
+}));
 
 import { BadRequestException, ForbiddenException } from '@nestjs/common';
 import { NeptiveApprovalService } from './approval.service';
@@ -73,19 +76,23 @@ function setup(approval = approvalRow(), variant: any = null) {
     variantsByGroups: jest.fn().mockResolvedValue(variant ? [variant] : []),
     confirmVariant: jest.fn().mockResolvedValue(undefined),
   };
+  const scheduler = {
+    scheduleApproved: jest.fn().mockResolvedValue({ status: 'SCHEDULED' }),
+  };
   const service = new NeptiveApprovalService(
     repo as any,
     clients as any,
     activities as any,
     postiz as any,
-    variants as any
+    variants as any,
+    scheduler as any
   );
-  return { service, repo, activities, postiz, variants };
+  return { service, repo, activities, postiz, variants, scheduler };
 }
 
 describe('Neptive approval service', () => {
-  it('does not change native Postiz publishing state when a client approves', async () => {
-    const { service, postiz, activities } = setup();
+  it('a client approval hands the group to the scheduler after the approval is committed', async () => {
+    const { service, postiz, activities, repo, scheduler } = setup();
 
     await service.transition('org-1', 'customer-1', 'approval-1', {
       status: 'APPROVED',
@@ -93,6 +100,66 @@ describe('Neptive approval service', () => {
 
     expect(postiz.changeGroupPublishAuthorization).not.toHaveBeenCalled();
     expect(activities.system).toHaveBeenCalledTimes(1);
+    expect(activities.system.mock.calls[0][2].type).toBe('POST_APPROVED');
+    expect(scheduler.scheduleApproved).toHaveBeenCalledTimes(1);
+    expect(scheduler.scheduleApproved).toHaveBeenCalledWith({
+      orgId: 'org-1',
+      customerId: 'customer-1',
+      postGroup: 'group-1',
+      title: 'Casa Pandora',
+    });
+    expect(repo.transitionApproval.mock.invocationCallOrder[0]).toBeLessThan(
+      scheduler.scheduleApproved.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('the agency approving schedules the same way', async () => {
+    const { service, scheduler } = setup(approvalRow(), variantRow(null));
+    await service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, AGENCY);
+    expect(scheduler.scheduleApproved).toHaveBeenCalledTimes(1);
+  });
+
+  it('no scheduling for any decision other than APPROVED', async () => {
+    for (const status of ['CHANGES_REQUESTED', 'REJECTED']) {
+      const { service, scheduler } = setup(approvalRow(), variantRow(null));
+      await service.transition('org-1', 'customer-1', 'approval-1', { status, comment: 'no' } as any, CLIENT);
+      expect(scheduler.scheduleApproved).not.toHaveBeenCalled();
+    }
+  });
+
+  it('a failed confirmation (slot already confirmed, concurrent approval) schedules nothing', async () => {
+    const { service, variants, scheduler } = setup(approvalRow(), variantRow(null));
+    variants.confirmVariant.mockRejectedValue(new BadRequestException('This slot is already confirmed'));
+    await expect(
+      service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT)
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(scheduler.scheduleApproved).not.toHaveBeenCalled();
+  });
+
+  it('a second approval of an approved content is refused before scheduling', async () => {
+    const { service, scheduler } = setup(approvalRow({ status: 'APPROVED' }));
+    await expect(
+      service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, AGENCY)
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(scheduler.scheduleApproved).not.toHaveBeenCalled();
+  });
+
+  it('a failed audit write after the commit does not skip the scheduling', async () => {
+    const { service, repo, scheduler } = setup(approvalRow(), variantRow(null));
+    repo.addApprovalAction.mockRejectedValue(new Error('insert failed'));
+    await expect(
+      service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT)
+    ).rejects.toThrow('insert failed');
+    expect(scheduler.scheduleApproved).toHaveBeenCalledTimes(1);
+  });
+
+  it('a scheduling failure does not undo nor fail the approval', async () => {
+    const { service, scheduler, activities, variants } = setup(approvalRow(), variantRow(null));
+    scheduler.scheduleApproved.mockResolvedValue({ status: 'FAILED', reason: 'Temporal down' });
+    await expect(
+      service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT)
+    ).resolves.toBeDefined();
+    expect(variants.confirmVariant).toHaveBeenCalledTimes(1);
     expect(activities.system.mock.calls[0][2].type).toBe('POST_APPROVED');
   });
 
@@ -115,8 +182,21 @@ describe('Neptive approval service', () => {
       variantId: 'variant-a',
     });
     expect(repo.transitionApproval).not.toHaveBeenCalled();
-    // client approval of a variant does not schedule anything either
     expect(postiz.changeGroupPublishAuthorization).not.toHaveBeenCalled();
+  });
+
+  it('approving a variant schedules its own group, after the confirmation transaction', async () => {
+    const { service, variants, scheduler } = setup(approvalRow(), variantRow(null));
+    await service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT);
+    expect(scheduler.scheduleApproved).toHaveBeenCalledWith({
+      orgId: 'org-1',
+      customerId: 'customer-1',
+      postGroup: 'group-1',
+      title: 'Reel',
+    });
+    expect(variants.confirmVariant.mock.invocationCallOrder[0]).toBeLessThan(
+      scheduler.scheduleApproved.mock.invocationCallOrder[0]
+    );
   });
 
   it('requesting changes on one variant only touches that variant', async () => {
