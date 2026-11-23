@@ -60,7 +60,7 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 | `apps/frontend/src/components/layout/top.menu.tsx` | "Agency" menu item | auto-merged |
 | `libraries/helpers/src/utils/custom.fetch.func.ts` | send `neptive-portal` header in NOT_SECURED mode | auto-merged |
 | `libraries/nestjs-libraries/src/temporal/temporal.module.ts` | import + `interceptors` line in the worker `workerOptions` (variant publish gate) | new on `neptive-next` (post variants) |
-| `libraries/nestjs-libraries/src/database/prisma/posts/posts.service.ts` | `isOwnPostWorkflow` helper + a `continue` guard in the terminate loops of `startWorkflow` and `deletePost` (see "Deliberate divergences") | new on `neptive-next` (approval scheduling); upstream edits this file often, keep the guard in both loops |
+| `libraries/nestjs-libraries/src/database/prisma/posts/posts.service.ts` | `isOwnPostWorkflow` helper + a `continue` guard in the terminate loops of `startWorkflow` and `deletePost`; `deletePost` terminates the workflows of every root of the group (new private `terminatePostWorkflows`, also by id); `changeDate` restarts the workflow of a QUEUE post still waiting (see "Deliberate divergences") | new on `neptive-next` (approval scheduling); upstream edits this file often, keep the guard in both loops |
 | `package.json`, `pnpm-lock.yaml` | `embla-carousel-react` dependency | auto-merged (lockfile verified with `--frozen-lockfile`) |
 | `package.json`, `pnpm-lock.yaml` | **Next 16.4.2 -> 16.4.6** (`next` dependency, `pnpm.overrides.next`, `eslint-config-next`): see "Deliberate divergences" | will conflict if upstream moves `next` on the same lines: keep the higher version |
 | `.gitignore` | ignore Next-generated `apps/frontend/AGENTS.md`/`CLAUDE.md` | auto-merged |
@@ -103,6 +103,21 @@ check as step 4b.
   `libraries/nestjs-libraries/src/neptive/upstream/posts-workflow-scope.spec.ts` (drives the real methods against a fake
   client with the fuzzy matching). Drop when upstream matches exactly (KEYWORD attribute, or the same check).
 
+- **Deleting a group stops every channel's workflow** (`posts.service.ts` `deletePost`). The repository marks the
+  whole group deleted but returns one root, and upstream terminated only that root's workflows: with Instagram +
+  Facebook in one group the other channel's workflow stayed alive. (It would not publish: after its sleep
+  `getPostsList` -> `getPostsRecursively` -> `posts.repository.getPost` filters `deletedAt: null`, returns nothing,
+  and the workflow sets the deleted post to `ERROR` "No Post"; but it is a live workflow and a stray ERROR.) Now every
+  root of the group (read before the delete) gets `terminatePostWorkflows`: the upstream list loop plus `post_<id>`
+  by id (the visibility list lags). Spec in `neptive/upstream/posts-workflow-scope.spec.ts`, e2e scenario 6.
+- **Changing the date of a waiting QUEUE post restarts its workflow** (`posts.service.ts` `changeDate`). The post
+  workflow reads `publishDate` when it starts and sleeps until it, so `action: 'update'` (date column only) left it
+  publishing at the OLD time. Now a QUEUE post whose old date is still more than one minute ahead gets
+  `startWorkflow` (TERMINATE_EXISTING) after the new date is written, whatever the action. Not when the old date has
+  passed: the calendar sends `'update'` for "Just update the post details" on published / past-QUEUE posts, whose
+  workflow may be publishing right now (a restart could publish twice). The calendar's normal drag of a future post
+  already sends `'schedule'`. Spec in the same file, e2e scenario 7. Drop both rows when upstream fixes them.
+
 ## What to re-check by hand after each merge (the script cannot)
 
 1. `proxy.ts`: the `/portal` early return still precedes the auth-cookie redirect.
@@ -118,7 +133,7 @@ check as step 4b.
    upstream module swapped by Neptive changed (login form, logos, font module), compare it with the Neptive
    copy in `apps/frontend/src/components/neptive/brand/`. Browser: `node neptive/dev/brand-sweep.mjs --langs=it,en`.
 8. Approval scheduling (`neptive/docs/approval-scheduling.md`): the `isOwnPostWorkflow` guard is still in both terminate
-   loops of `posts.service.ts`; `PostsService.changePostStatus`
+   loops of `posts.service.ts`, `deletePost` still collects every root, `changeDate` still restarts a waiting QUEUE post; `PostsService.changePostStatus`
    / `changeDate(…, 'update')` keep their signatures, `startWorkflow` still uses workflow id `post_<id>` and
    `postWorkflowV112` (else `PostizAdapter.postWorkflowRunning` checks the wrong workflow and every approval fails
    closed). Run `node neptive/dev/schedule-check.mjs`.

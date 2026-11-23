@@ -42,6 +42,33 @@ after the commit does not skip the scheduling either). Idempotent: a second appr
 machine / slot transaction before scheduling; a repeated scheduling call finds no `DRAFT` root and does nothing; one
 workflow per post (`post_<id>`, `TERMINATE_EXISTING`), checked live with `count WorkflowId="post_<id>" AND Running` = 1.
 
+## Concurrency and customer scope
+
+- One PED slot = one lock. An approval (decision transaction + scheduling) and an agency reopen (reopen transaction +
+  unscheduling) of the same slot never interleave: `NeptiveSlotLock` takes `pg_advisory_xact_lock` on the plan item id
+  in an interactive transaction on a small dedicated Prisma pool (3 connections), for at most 120 s; no schema change.
+  If the lock cannot be taken (database down, 30 s wait) the request fails before doing anything. Inside the lock the
+  scheduler re-reads the slot: a single-content item must still be `APPROVED`; a reopen does not unschedule a group
+  confirmed again. Spec `services/slot-serialization.spec.ts` (both sequences interleaved), e2e scenario 8.
+- Every lookup is scoped to the customer: PED items by `orgId` + `customerId`, every post of a group must belong to
+  the customer, for scheduling and for unscheduling (a group shared with another customer is not touched: agency
+  activity).
+- After the decision is committed nothing makes the request fail: audit writes (action, comment, activity) are
+  independent and only logged, the scheduling never throws.
+
+## Known limits (accepted, not built)
+
+- **No retry later.** Scheduling happens only inside the approval request. If it fails, the posts stay `DRAFT` and
+  the agency gets "Approvato ma non programmato": someone has to schedule them by hand. No outbox, no background
+  retry, and `RUN_CRON` stays unset in production, so nothing picks them up afterwards.
+- **The client may wait.** The Temporal checks (8 s timeout each) run inside the request: with Temporal down the
+  client's "Approva" takes about 8 s before answering (the approval is saved anyway).
+- **A warning can be lost.** If the database fails while the "Approvato ma non programmato" activity is written, that
+  activity is lost (it is only in the backend log). The posts are still `DRAFT`, so nothing is published by mistake,
+  but nobody is told.
+- **One lock per slot, not per post.** Scheduling / deleting / moving posts from the Postiz calendar does not take
+  the slot lock.
+
 ## Upstream behaviour this relies on / works around (re-check after each Postiz merge)
 
 - `changePostStatus(org, id, 'schedule'|'draft')`, `changeDate(org, id, iso, 'update')`, workflow id `post_<id>` and
@@ -55,6 +82,10 @@ workflow per post (`post_<id>`, `TERMINATE_EXISTING`), checked live with `count 
   `neptive/upstream/posts-workflow-scope.spec.ts`, e2e scenario 5 (fails without the fix). The lag stays: Neptive
   terminates `post_<id>` by id on unschedule. Production has `RUN_CRON` unset, so `missing-post-workflow` does not run
   and a `QUEUE` post without a workflow is never recovered: the workflow started at approval is the only guarantee.
+
+- `deletePost` and `changeDate` are also patched (UPSTREAM-SYNC "Deliberate divergences"): deleting a group stops the
+  workflow of every channel; moving the date of a waiting `QUEUE` post restarts its workflow so it publishes at the
+  new time.
 
 ## Checks
 
