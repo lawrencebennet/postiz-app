@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { NeptiveEditorialPlan } from '@prisma/client';
@@ -64,6 +65,8 @@ const LABEL_MAX = 12;
 
 @Injectable()
 export class NeptiveVariantService {
+  private readonly logger = new Logger('NeptiveVariantService');
+
   constructor(
     private repo: NeptiveRepository,
     private variants: NeptiveVariantRepository,
@@ -610,18 +613,25 @@ export class NeptiveVariantService {
       postGroup: postGroup!,
       title: item.title,
     });
-    await this.repo.createActivity({
-      orgId,
-      customerId,
-      type: 'SLOT_REOPENED',
-      title: `Scelta riaperta: ${item.title}${rows.length ? ` (era confermata la variante ${label})` : ''}`,
-      body: comment || '',
-      visibility: 'CLIENT_VISIBLE',
-      source: 'MANUAL',
-      relatedPostGroup: postGroup || undefined,
-      relatedPlanId: planId,
-      performedByUserId: user.id,
-    });
+    // reopen committed: a failed activity write is logged, not a failed request
+    await this.repo
+      .createActivity({
+        orgId,
+        customerId,
+        type: 'SLOT_REOPENED',
+        title: `Scelta riaperta: ${item.title}${rows.length ? ` (era confermata la variante ${label})` : ''}`,
+        body: comment || '',
+        visibility: 'CLIENT_VISIBLE',
+        source: 'MANUAL',
+        relatedPostGroup: postGroup || undefined,
+        relatedPlanId: planId,
+        performedByUserId: user.id,
+      })
+      .catch((err) =>
+        this.logger.error(
+          `slot ${item.id}: reopened, activity not written: ${err instanceof Error ? err.message : err}`
+        )
+      );
     return this.getItem(orgId, customerId, planId, itemId);
   }
 }

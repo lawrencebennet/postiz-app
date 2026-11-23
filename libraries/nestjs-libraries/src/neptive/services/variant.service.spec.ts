@@ -278,6 +278,16 @@ describe('variant agency actions', () => {
     );
   });
 
+  it('reopen committed: a failed activity write does not fail the request', async () => {
+    const { service, repo, scheduler } = setup({
+      itemRow: item({ variants: [row('va', 'A', 0), row('vb', 'B', 1)], confirmedVariantId: 'vb' }),
+      approvals: { 'g-B': approval('g-B', 'APPROVED') },
+    });
+    repo.createActivity.mockRejectedValue(new Error('activity insert failed'));
+    await expect(service.reopen('org-1', 'customer-1', 'plan-1', 'item-1', USER, {})).resolves.toBeDefined();
+    expect(scheduler.unscheduleReopened).toHaveBeenCalledTimes(1);
+  });
+
   it('reopen of a single-content item unschedules its group', async () => {
     const { service, scheduler } = setup({
       itemRow: item({ postGroup: 'g-legacy' }),

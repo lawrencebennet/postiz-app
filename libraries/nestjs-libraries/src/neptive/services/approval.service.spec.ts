@@ -144,13 +144,27 @@ describe('Neptive approval service', () => {
     expect(scheduler.scheduleApproved).not.toHaveBeenCalled();
   });
 
-  it('a failed audit write after the commit does not skip the scheduling', async () => {
-    const { service, repo, scheduler } = setup(approvalRow(), variantRow(null));
+  it('a failed audit write after the commit neither skips the scheduling nor fails the request', async () => {
+    const { service, repo, scheduler, activities } = setup(approvalRow(), variantRow(null));
     repo.addApprovalAction.mockRejectedValue(new Error('insert failed'));
     await expect(
       service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT)
-    ).rejects.toThrow('insert failed');
+    ).resolves.toMatchObject({ id: 'approval-1' });
     expect(scheduler.scheduleApproved).toHaveBeenCalledTimes(1);
+
+    const second = setup(approvalRow(), variantRow(null));
+    second.activities.system.mockRejectedValue(new Error('activity insert failed'));
+    await expect(
+      second.service.transition('org-1', 'customer-1', 'approval-1', { status: 'APPROVED' } as any, CLIENT)
+    ).resolves.toMatchObject({ id: 'approval-1' });
+    expect(second.scheduler.scheduleApproved).toHaveBeenCalledTimes(1);
+    expect(activities.system).toHaveBeenCalledTimes(1); // each audit write is independent
+
+    const comment = setup(approvalRow());
+    comment.repo.addApprovalComment.mockRejectedValue(new Error('comment insert failed'));
+    await expect(
+      comment.service.transition('org-1', 'customer-1', 'approval-1', { status: 'CHANGES_REQUESTED', comment: 'x' } as any, CLIENT)
+    ).resolves.toMatchObject({ id: 'approval-1' });
   });
 
   it('a scheduling failure does not undo nor fail the approval', async () => {

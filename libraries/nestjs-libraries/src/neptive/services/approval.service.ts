@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
 } from '@nestjs/common';
 import {
   NeptiveApprovalActionType,
@@ -38,8 +39,13 @@ const ACTION_BY_STATUS: Partial<
   DRAFT: 'RESUBMITTED',
 };
 
+const errorText = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);
+
 @Injectable()
 export class NeptiveApprovalService {
+  private readonly logger = new Logger('NeptiveApprovalService');
+
   constructor(
     private repo: NeptiveRepository,
     private clients: NeptiveClientService,
@@ -241,17 +247,22 @@ export class NeptiveApprovalService {
       }
     }
 
-    try {
-      await this.repo.addApprovalAction({
+    // The decision is committed above. Nothing after this point may make the
+    // request fail as if it had not happened: every audit write is independent
+    // and only logged when it fails; the scheduling never throws.
+    await this.afterCommit(id, 'approval action', () =>
+      this.repo.addApprovalAction({
         approvalId: id,
         actorType: actor.type,
         actorId: actor.id,
         action: ACTION_BY_STATUS[body.status as NeptiveApprovalStatus] || 'SUBMITTED',
         comment: body.comment,
-      });
+      })
+    );
 
-      if (body.comment?.trim()) {
-        await this.repo.addApprovalComment({
+    if (body.comment?.trim()) {
+      await this.afterCommit(id, 'approval comment', () =>
+        this.repo.addApprovalComment({
           approvalId: id,
           visibility:
             actor.type === 'CLIENT_USER' ? 'CLIENT_VISIBLE' : 'INTERNAL',
@@ -259,11 +270,13 @@ export class NeptiveApprovalService {
           authorId: actor.id,
           authorName: actor.name,
           body: body.comment,
-        });
-      }
+        })
+      );
+    }
 
-      if (body.status === 'APPROVED') {
-        await this.activities.system(orgId, customerId, {
+    if (body.status === 'APPROVED') {
+      await this.afterCommit(id, 'approval activity', () =>
+        this.activities.system(orgId, customerId, {
           type: 'POST_APPROVED',
           title: variant
             ? `Variante ${variant.label} confermata${
@@ -271,23 +284,34 @@ export class NeptiveApprovalService {
               }`
             : `Content approved${approval.title ? `: ${approval.title}` : ''}`,
           relatedPostGroup: approval.postGroup,
-        });
-      }
-    } finally {
-      if (body.status === 'APPROVED') {
-        // The approval is committed above: schedule the approved group through
-        // Postiz even if an audit write failed. Never throws; a failure leaves
-        // the posts in DRAFT with an agency-only activity (NeptivePublishScheduler).
-        await this.scheduler.scheduleApproved({
+        })
+      );
+      // Schedule the approved group through Postiz. Never throws; a failure
+      // leaves the posts in DRAFT with an agency-only activity.
+      await this.afterCommit(id, 'scheduling', () =>
+        this.scheduler.scheduleApproved({
           orgId,
           customerId,
           postGroup: approval.postGroup,
           title: variant?.item?.title || approval.title,
-        });
-      }
+        })
+      );
     }
 
-    return this.get(orgId, customerId, id);
+    try {
+      return await this.get(orgId, customerId, id);
+    } catch (err) {
+      this.logger.error(`approval ${id}: committed, reloading it failed: ${errorText(err)}`);
+      return { ...approval, status: body.status as NeptiveApprovalStatus };
+    }
+  }
+
+  private async afterCommit(approvalId: string, what: string, write: () => Promise<unknown>) {
+    try {
+      await write();
+    } catch (err) {
+      this.logger.error(`approval ${approvalId}: committed, ${what} not written: ${errorText(err)}`);
+    }
   }
 
   async comment(
