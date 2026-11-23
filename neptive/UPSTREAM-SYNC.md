@@ -117,7 +117,8 @@ check as step 4b.
 7. White-label: `node neptive/scripts/brand-check.mjs` passes (also step 4b of the script); if it reports that an
    upstream module swapped by Neptive changed (login form, logos, font module), compare it with the Neptive
    copy in `apps/frontend/src/components/neptive/brand/`. Browser: `node neptive/dev/brand-sweep.mjs --langs=it,en`.
-8. Approval scheduling (`neptive/docs/approval-scheduling.md`, no upstream file touched): `PostsService.changePostStatus`
+8. Approval scheduling (`neptive/docs/approval-scheduling.md`): the `isOwnPostWorkflow` guard is still in both terminate
+   loops of `posts.service.ts`; `PostsService.changePostStatus`
    / `changeDate(…, 'update')` keep their signatures, `startWorkflow` still uses workflow id `post_<id>` and
    `postWorkflowV112` (else `PostizAdapter.postWorkflowRunning` checks the wrong workflow and every approval fails
    closed). Run `node neptive/dev/schedule-check.mjs`.

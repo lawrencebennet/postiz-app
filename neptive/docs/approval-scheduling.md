@@ -2,7 +2,7 @@
 
 Since `neptive-next` 2026-11-23. Code: `libraries/nestjs-libraries/src/neptive/services/publish-scheduler.service.ts`
 (rules), `adapters/postiz.adapter.ts` (bridge to Postiz/Temporal), `domain/publish-date.ts` (date rule). No schema
-change, no upstream file touched.
+change. One upstream file: `posts.service.ts` (terminate only the post's own workflows, see below).
 
 ## What happens
 
@@ -31,7 +31,9 @@ workflow, so "no exception" does not mean "scheduled". The scheduler therefore:
 1. re-reads the variant at scheduling time: only the live, confirmed variant of a live slot of the same customer
    (`variantMayPublish`, the publish gate's rule); every post of the group must belong to the customer;
 2. checks that Temporal answers (`getSystemInfo`, 8 s timeout) **before** touching any post;
-3. after scheduling, checks that `post_<id>` is `RUNNING` for every post (describe, 8 s timeout);
+3. after scheduling the **whole group**, checks that `post_<id>` is `RUNNING` for every post (`describe` on the
+   workflow id: a direct read, not the lagging visibility search; 8 s timeout). Checked at the end, not per post,
+   because starting a later post could terminate an earlier one;
 4. on any doubt puts **every** post it queued back to `DRAFT` (+ terminate by id) and writes the agency activity.
    All-or-nothing per group: Instagram never goes out without its Facebook twin because of this code.
 
@@ -48,8 +50,11 @@ workflow per post (`post_<id>`, `TERMINATE_EXISTING`), checked live with `count 
   eventually consistent (a workflow started a second ago is not listed: `changePostStatus(…, 'draft')` right after a
   schedule did **not** terminate it in the local check) and `postId` is a **TEXT** search attribute, so the query is a
   full-text match: any shared hyphen token terminates the other post's workflow (verified locally:
-  `postId="ffffffff-1111-2222-8000-444444444444"` lists every `…-8000-…` post). Neptive terminates `post_<id>` by id on
-  unschedule and verifies `RUNNING` after scheduling; it cannot protect *other* posts from this upstream query.
+  `postId="ffffffff-1111-2222-8000-444444444444"` lists every `…-8000-…` post). Fixed in `posts.service.ts`: the
+  terminate loops keep only `post_<id>` and `post_<id>_<suffix>` (repeat children); spec
+  `neptive/upstream/posts-workflow-scope.spec.ts`, e2e scenario 5 (fails without the fix). The lag stays: Neptive
+  terminates `post_<id>` by id on unschedule. Production has `RUN_CRON` unset, so `missing-post-workflow` does not run
+  and a `QUEUE` post without a workflow is never recovered: the workflow started at approval is the only guarantee.
 
 ## Checks
 
@@ -62,4 +67,6 @@ node neptive/dev/schedule-check.mjs                              # LOCAL e2e: re
 approved → only B (IG + FB) `QUEUE` with `RUNNING` workflows, A/C/D/E `DRAFT`; second approval refused, still one
 workflow per post; real workflow v1.1.2 + real gate with fake provider (`gate-check.sh`) lets B through; reopen →
 `DRAFT` + workflows terminated; passed date → next 10:00 Rome; **Temporal stopped** → approval accepted, posts `DRAFT`,
-confirmation kept, agency activity; single-content item → scheduled and unscheduled. It removes what it added.
+confirmation kept, agency activity; single-content item → scheduled and unscheduled; **5.** B's two posts (ids sharing
+segments) both `RUNNING` 6 s after the approval, and still `RUNNING` after another post sharing segments is scheduled
+(the fuzzy query does list them). It removes what it added.
