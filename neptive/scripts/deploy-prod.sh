@@ -155,7 +155,7 @@ step_schema() {
     fi
   fi
   R "$(one_off "pnpm dlx prisma@6.5.0 migrate diff --from-url \\\"\\\$DATABASE_URL\\\" --to-schema-datamodel $SCHEMA --script") > $D; wc -l $D"
-  R "if grep -Eqi 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; then echo 'the diff drops data:'; grep -Ei 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; exit 1; fi; echo \"statements: \$(grep -c ';' $D); DROP INDEX/CONSTRAINT only:\"; grep -E '^(DROP|ALTER TABLE .* DROP)' $D"
+  R "if grep -Eqi 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; then echo 'the diff drops data:'; grep -Ei 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; exit 1; fi; echo \"statements: \$(grep -c ';' $D); DROP INDEX/CONSTRAINT only:\"; grep -E '^(DROP|ALTER TABLE .* DROP)' $D || echo '  (none: no DROP at all)'"
   R "$(one_off "pnpm dlx prisma@6.5.0 db push --accept-data-loss --schema $SCHEMA") | tail -4"
   R "$PSQL -c \"select 'neptive_plan_item_variants: '||coalesce(to_regclass('public.neptive_plan_item_variants')::text,'MISSING')\" | tee /dev/stderr | grep -q 'neptive_plan_item_variants: neptive_plan_item_variants'"
   if [ "$DRY" = 0 ]; then
