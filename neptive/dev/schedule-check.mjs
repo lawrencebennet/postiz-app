@@ -36,11 +36,12 @@ const IG = 'abdd89db-9823-4d67-ae5b-2b1f95df6135';
 const FB = '5eed2000-0000-4000-8000-0000000000fb';
 const G = (letter) => `5eed6000-0000-4000-8000-00000000000${letter}`;
 const P = (letter) => `5eed1000-0000-4000-8000-00000000000${letter}`;
-// Facebook twins get ids that share no hyphen token with the seed ids: Postiz looks running
-// workflows up with postId="<id>" on a TEXT search attribute (full-text, any token matches), so
-// patterned ids like the seed's terminate each other's workflows. See the report / DEPLOY notes.
-const FB_A = 'fa0c1d2e-3b4a-4f5e-9a6b-7c8d9e0f1a2b';
-const FB_B = 'fb1d2e3f-4c5b-4a6f-ab7c-8d9e0f1a2b3c';
+// The Facebook twins deliberately share hyphen tokens ("4000", "8000") with the seed ids: Postiz
+// looks running workflows up with postId="<id>" on a TEXT search attribute (full-text, any token
+// matches). Before the posts.service.ts guard (see UPSTREAM-SYNC "Deliberate divergences") starting
+// one of them terminated the others; scenario 5 checks that it no longer does.
+const FB_A = 'fa0c1d2e-3b4a-4000-8000-7c8d9e0f1a2b';
+const FB_B = 'fb1d2e3f-4c5b-4000-8000-8d9e0f1a2b3c';
 
 let failures = 0;
 const check = (ok, what, extra = '') => {
@@ -278,6 +279,31 @@ async function main() {
   });
   check(reopenLegacy.status < 300 && states()[P('e')] === 'DRAFT', 'reopen -> E DRAFT', `HTTP ${reopenLegacy.status}`);
   check(workflowStatus(P('e')) !== 'WORKFLOW_EXECUTION_STATUS_RUNNING', 'E workflow no longer running', workflowStatus(P('e')));
+
+  // ---------------------------------------------------------------- 5. same group, two posts, both alive
+  console.log('\n# 5. B (IG + FB, ids sharing segments) approved, then another post sharing segments is scheduled');
+  terminateLeftovers();
+  portal = await portalSession(seed());
+  item = await portalItem(portal);
+  await approve(portal, item.variants.find((variant) => variant.label === 'B').approval.id);
+  // let the visibility index catch up: from now on postId="<other id>" would list B's runs
+  await sleep(6000);
+  const alive = () =>
+    [P('b'), FB_B].every((id) => workflowStatus(id) === 'WORKFLOW_EXECUTION_STATUS_RUNNING');
+  check(alive(), 'end of approval + 6 s: both B workflows RUNNING', `${workflowStatus(P('b'))} / ${workflowStatus(FB_B)}`);
+  sql(`
+    begin;
+    insert into neptive_editorial_plan_items(id, "planId", "postGroup", title, position, "createdAt", "updatedAt")
+    values ('${LEGACY_ITEM}', '${PLAN}', '${G('e')}', 'Schedule-check: contenuto singolo', 9, now(), now());
+    insert into neptive_content_approvals(id, "orgId", "customerId", "postGroup", status, title, "submittedAt", "createdAt", "updatedAt")
+    values (gen_random_uuid()::text, '${ORG}', '${AURORA}', '${G('e')}', 'PENDING_CLIENT_APPROVAL', 'Schedule-check E', now(), now(), now());
+    commit;`);
+  const listed = temporal('workflow', 'list', '-q', `postId="${P('e')}" AND ExecutionStatus="Running"`);
+  check(listed.includes(`post_${P('b')}`), 'precondition: the fuzzy query for E lists B (the upstream pattern)');
+  const single = await portalItem(portal, LEGACY_ITEM);
+  await approve(portal, single.variants[0].approval.id);
+  check(workflowStatus(P('e')) === 'WORKFLOW_EXECUTION_STATUS_RUNNING', 'E scheduled, workflow RUNNING');
+  check(alive(), 'scheduling E did not terminate B Instagram / Facebook', `${workflowStatus(P('b'))} / ${workflowStatus(FB_B)}`);
 
   // ---------------------------------------------------------------- cleanup
   terminateLeftovers();
