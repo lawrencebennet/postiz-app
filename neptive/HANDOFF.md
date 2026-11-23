@@ -48,11 +48,12 @@ Neptive owns:
 
 - Import PED from Excel / Notion / another project
 - Auto-create Postiz posts from PED rows
-- Auto-publish because a PED exists
+- Auto-publish because a PED exists (what exists: the client's approval of a PED slot schedules that slot's
+  posts, see [docs/approval-scheduling.md](./docs/approval-scheduling.md))
 - White-label domains / PDF reports / Elestio
 - Real social OAuth credentials in this repo
 
-Publishing still means: connect channels in Postiz → compose on that Customer → Neptive approval (optional) → `PostsService.changePostStatus(..., 'schedule')` → Temporal.
+Publishing still means: connect channels in Postiz → compose on that Customer → Neptive approval (optional) → `PostsService.changePostStatus(..., 'schedule')` → Temporal. For posts on a PED slot the approval makes that last call itself (DRAFT roots of the approved group, fail closed; agency reopen undoes it): [docs/approval-scheduling.md](./docs/approval-scheduling.md).
 
 ---
 
@@ -207,6 +208,6 @@ Abbiamo customizzato Postiz con un layer **Neptive** sulla branch `neptive` del 
 
 - **Tu (admin agency):** login Postiz → menu Agency → un cliente alla volta (PED, strategy, approvazioni, utenti).
 - **Il cliente:** magic link → `/portal` → vede solo il suo contenuto.
-- **Pubblicazione:** sempre Postiz (canali + composer + Temporal). Il PED **non** importa post e **non** pubblica da solo.
+- **Pubblicazione:** sempre Postiz (canali + composer + Temporal). Il PED **non** importa post. Quando il cliente approva uno slot del PED, i post in bozza di quello slot (variante scelta) vengono programmati alla data prevista (se è già passata: stessa ora del primo giorno utile); se la programmazione fallisce restano in bozza e l'agenzia vede l'attività "Approvato ma non programmato".
 
 Su un altro PC: clona il fork, `git checkout neptive`, crea `.env` (porta Postgres **5434**), Docker come sopra, `pnpm install` + prisma + `dev`.
