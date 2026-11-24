@@ -978,7 +978,12 @@ const UsersPanel = ({ customerId }: { customerId: string }) => {
         const body = await response.json().catch(() => ({}));
         await mutate();
         if (!response.ok || !body.password) {
-          toaster.show('Impossibile generare la password', 'warning');
+          toaster.show(
+            body?.message === 'TOO_MANY_PASSWORD_ACCOUNTS'
+              ? 'Questa email ha già una password per tre clienti: per questo usa il link di accesso'
+              : 'Impossibile generare la password',
+            'warning'
+          );
           return;
         }
         await showSecret({ userId: user.id, kind: 'password', value: body.password });

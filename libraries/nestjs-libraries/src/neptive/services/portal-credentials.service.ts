@@ -37,9 +37,10 @@ export const NEPTIVE_LOGIN_LIMITS = {
   // wrong "current password" on the account page, per client user
   change: 5,
 } as const;
-// bcrypt comparisons per login attempt, whatever the email: an unknown email, a user without a
-// password and a user with one cost the same (two compares), so the timing does not tell them apart.
-export const NEPTIVE_LOGIN_MIN_COMPARES = 2;
+// bcrypt comparisons per login attempt: always exactly this many, whatever the email (unknown, no
+// password, one or several accounts), so the timing tells nothing. It is also the most customers one email
+// can have a password for: a fourth is refused when the password is created (TOO_MANY_PASSWORD_ACCOUNTS).
+export const NEPTIVE_LOGIN_COMPARES = 3;
 const BCRYPT_ROUNDS = 10; // same cost as the admin login (AuthService.hashPassword)
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30; // same as a magic-link session
 const RESTRICTED_SESSION_TTL_MS = 1000 * 60 * 30; // session opened with a temporary password
@@ -200,14 +201,17 @@ export class NeptivePortalCredentialsService {
         throw new NeptiveThrottledException(wait);
       }
       const candidates = email ? await this.credentials.loginCandidates(email) : [];
-      const pool = account ? candidates.filter((row) => row.id === account) : candidates;
+      // oldest first; more than NEPTIVE_LOGIN_COMPARES cannot exist (refused at creation), the slice keeps
+      // the bound even if one did
+      const allowed = candidates.slice(0, NEPTIVE_LOGIN_COMPARES);
+      const pool = account ? allowed.filter((row) => row.id === account) : allowed;
       const matches: typeof pool = [];
       for (const row of pool) {
         if (await compare(password, row.passwordHash)) {
           matches.push(row);
         }
       }
-      for (let i = pool.length; i < NEPTIVE_LOGIN_MIN_COMPARES; i++) {
+      for (let i = pool.length; i < NEPTIVE_LOGIN_COMPARES; i++) {
         await compare(password, await dummy());
       }
 
@@ -277,6 +281,9 @@ export class NeptivePortalCredentialsService {
         throw new BadRequestException(problem);
       }
       const existing = await this.credentials.credentialForUser(user.id);
+      if (!existing && (await this.tooManyPasswordAccounts(user))) {
+        throw new BadRequestException('TOO_MANY_PASSWORD_ACCOUNTS');
+      }
       // a session opened with the temporary password just proved it; every other change of an
       // existing password needs the current one
       if (existing && !identity.passwordChangeRequired) {
@@ -348,6 +355,12 @@ export class NeptivePortalCredentialsService {
 
   // ---------------------------------------------------------------- agency
 
+  /** a new password for this user would make its email exceed the login bound */
+  private async tooManyPasswordAccounts(user: { id: string; email: string }) {
+    const others = (await this.credentials.loginCandidates(user.email)).filter((row) => row.id !== user.id);
+    return others.length >= NEPTIVE_LOGIN_COMPARES;
+  }
+
   private async agencyUser(orgId: string, customerId: string, userId: string) {
     const customer = await this.repo.customerInOrg(orgId, customerId);
     const user = customer ? await this.repo.clientUserById(orgId, customerId, userId) : null;
@@ -365,6 +378,12 @@ export class NeptivePortalCredentialsService {
     agencyUserId?: string
   ) {
     const user = await this.agencyUser(orgId, customerId, userId);
+    if (
+      !(await this.credentials.credentialSummary(user.id)) &&
+      (await this.tooManyPasswordAccounts(user))
+    ) {
+      throw new BadRequestException('TOO_MANY_PASSWORD_ACCOUNTS');
+    }
     const password = newTemporaryPassword();
     const summary = await this.credentials.setAgencyCredential({
       clientUserId: user.id,

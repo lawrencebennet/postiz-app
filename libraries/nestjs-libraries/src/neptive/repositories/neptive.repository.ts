@@ -103,7 +103,7 @@ export class NeptiveRepository {
 
   clientUserByEmail(orgId: string, customerId: string, email: string) {
     return this.prisma.neptiveClientUser.findFirst({
-      where: { orgId, customerId, email: email.toLowerCase(), deletedAt: null },
+      where: { orgId, customerId, email: email.trim().toLowerCase(), deletedAt: null },
     });
   }
 
@@ -115,7 +115,8 @@ export class NeptiveRepository {
     role: NeptiveClientUserRole;
   }) {
     return this.prisma.neptiveClientUser.create({
-      data: { ...data, email: data.email.toLowerCase() },
+      // same canonical form as the login (normalizeLoginEmail): trimmed, lower-case
+      data: { ...data, email: data.email.trim().toLowerCase() },
     });
   }
 

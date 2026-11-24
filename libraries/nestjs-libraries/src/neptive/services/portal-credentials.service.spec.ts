@@ -345,7 +345,37 @@ describe('portal password login', () => {
       await w.service.login({ email, password: 'sbagliata sbagliata' }, { ip: IP }, response()).catch(() => undefined);
       counts.push(spy.mock.calls.length);
     }
-    expect(counts).toEqual([2, 2, 2]);
+    // two accounts on one email, three accounts, and a chosen account: still exactly 3
+    const b = w.addUser({ customerId: 'cust-b', email: 'ok@a.it' });
+    w.setPassword(b, 'Una password lunga 2');
+    for (const input of [{ email: 'ok@a.it' }, { email: 'ok@a.it', account: ok.id }]) {
+      spy.mockClear();
+      await w.service.login({ ...input, password: 'sbagliata sbagliata' }, { ip: IP }, response()).catch(() => undefined);
+      counts.push(spy.mock.calls.length);
+    }
+    w.customers.push({ id: 'cust-c', orgId: 'org-1', name: 'Terzo', deletedAt: null });
+    const c = w.addUser({ customerId: 'cust-c', email: 'ok@a.it' });
+    w.setPassword(c, 'Una password lunga 3');
+    spy.mockClear();
+    await w.service.login({ email: 'ok@a.it', password: 'sbagliata sbagliata' }, { ip: IP }, response()).catch(() => undefined);
+    counts.push(spy.mock.calls.length);
+    expect(counts).toEqual([3, 3, 3, 3, 3, 3]);
+  });
+
+  it('one email can have a password under at most 3 customers (the comparison bound)', async () => {
+    const w = world();
+    for (const id of ['cust-c', 'cust-d']) w.customers.push({ id, orgId: 'org-1', name: id, deletedAt: null });
+    const users = ['cust-a', 'cust-b', 'cust-c', 'cust-d'].map((customerId) => w.addUser({ customerId, email: 'tanti@a.it' }));
+    for (const user of users.slice(0, 3)) await w.service.issueTemporaryPassword('org-1', user.customerId, user.id);
+    const fourth = await w.service.issueTemporaryPassword('org-1', 'cust-d', users[3].id).catch((e) => e);
+    expect(fourth.getStatus()).toBe(400);
+    expect(fourth.getResponse().message).toBe('TOO_MANY_PASSWORD_ACCOUNTS');
+    // nor by the client from a magic-link session
+    const identity = { sessionId: 's', clientUserId: users[3].id, customerId: 'cust-d', orgId: 'org-1', email: 'tanti@a.it', name: 'x', role: 'CLIENT_ADMIN', passwordChangeRequired: false };
+    const own = await w.service.changeOwnPassword(identity, { newPassword: 'Una password lunga 4' }, response()).catch((e) => e);
+    expect(own.getResponse().message).toBe('TOO_MANY_PASSWORD_ACCOUNTS');
+    // re-issuing for one that already has a password is fine
+    expect((await w.service.issueTemporaryPassword('org-1', 'cust-a', users[0].id)).password).toBeTruthy();
   });
 });
 
