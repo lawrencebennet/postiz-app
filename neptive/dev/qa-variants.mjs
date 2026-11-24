@@ -96,12 +96,13 @@ async function openAgencySlot(page) {
 async function apiRefusals() {
   // a fresh portal session straight against the API, no UI
   const consume = await fetch(`${API}/neptive/portal-auth/magic`, {
-    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: magicLink() }),
+    // portal mutations must come from the portal origin (CSRF rule, neptive/docs/client-credentials.md)
+    method: 'POST', headers: { 'content-type': 'application/json', origin: new URL(BASE).origin }, body: JSON.stringify({ token: magicLink() }),
   });
   // dev (NOT_SECURED) hands back a header; the production build sets an httpOnly cookie instead
   const portalHeader = consume.headers.get('neptive-portal');
   const cookie = consume.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
-  const headers = { 'content-type': 'application/json', ...(portalHeader ? { 'neptive-portal': portalHeader } : {}), ...(cookie ? { cookie } : {}) };
+  const headers = { 'content-type': 'application/json', origin: new URL(BASE).origin, ...(portalHeader ? { 'neptive-portal': portalHeader } : {}), ...(cookie ? { cookie } : {}) };
   const peds = await (await fetch(`${API}/neptive/portal/peds`, { headers })).json();
   const item = peds.flatMap((ped) => ped.items).find((entry) => entry.id === ITEM);
   // prefer a receded variant whose own approval is still pending: only the slot rule can refuse it

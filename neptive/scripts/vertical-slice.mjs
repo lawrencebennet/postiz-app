@@ -48,6 +48,8 @@ async function req(path, { method = 'GET', headers = {}, body, raw } = {}) {
     headers: {
       Accept: 'application/json',
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+      // a browser sends its origin on every non-GET; the portal refuses mutations without it (CSRF rule)
+      ...(method !== 'GET' ? { Origin: new URL(FRONTEND).origin } : {}),
       ...headers,
     },
     body: body !== undefined ? JSON.stringify(body) : undefined,

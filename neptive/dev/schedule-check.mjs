@@ -16,6 +16,8 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 
 const API = process.env.PZN_API || 'http://localhost:3000';
+// portal mutations must come from the portal origin (CSRF rule, neptive/docs/client-credentials.md)
+const ORIGIN = new URL(process.env.PZN_BASE || 'http://localhost:4200').origin;
 const env = Object.fromEntries(
   readFileSync('.env', 'utf8')
     .split('\n')
@@ -131,12 +133,12 @@ function ensureFacebookIntegration() {
 async function portalSession(token) {
   const consume = await fetch(`${API}/neptive/portal-auth/magic`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', origin: ORIGIN },
     body: JSON.stringify({ token }),
   });
   const portal = consume.headers.get('neptive-portal');
   if (!portal) throw new Error(`magic link not consumed: HTTP ${consume.status}`);
-  return { 'content-type': 'application/json', 'neptive-portal': portal };
+  return { 'content-type': 'application/json', origin: ORIGIN, 'neptive-portal': portal };
 }
 
 async function agencySession() {

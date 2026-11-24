@@ -6,7 +6,8 @@ import {
 } from '@nestjs/common';
 
 /**
- * CSRF check for the credential endpoints (login, password change, agency password actions).
+ * CSRF check: used for every mutating portal request (portalRequestProblem, below) and for the agency
+ * password endpoints (NeptiveSameOriginGuard).
  *
  * The portal cookie is SameSite=None in production, so the browser attaches it to cross-site requests,
  * and Nest parses urlencoded bodies: a plain HTML form on another site could otherwise POST here with
@@ -43,6 +44,24 @@ export function sameOriginProblem(
   } catch {
     return 'Cross-site request refused';
   }
+}
+
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/**
+ * The CSRF rule of every portal route (/neptive/portal/** and /neptive/portal-auth/**): reads pass, anything
+ * that can change state (POST, PUT, PATCH, DELETE, any other verb) must be a same-origin JSON request.
+ * Applied once, by NeptiveSameOriginMiddleware, to every portal controller (see neptive.api.module.ts).
+ */
+export function portalRequestProblem(
+  method: string,
+  headers: Record<string, string | string[] | undefined>,
+  frontendUrl = process.env.FRONTEND_URL
+): string | null {
+  if (SAFE_METHODS.has((method || '').toUpperCase())) {
+    return null;
+  }
+  return sameOriginProblem(headers, frontendUrl);
 }
 
 @Injectable()
