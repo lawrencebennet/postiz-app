@@ -110,6 +110,30 @@ for (let i = 0; i < 20; i++) {
 const ipLocked = await request('POST', '/api/neptive/portal-auth/login', { body: { email: 'altro@esempio.it', password: 'x x x x x x' }, headers: { 'X-Forwarded-For': '8.8.8.8' } });
 check('IP bucket counts the address the proxy saw, a forged X-Forwarded-For does not escape it', ipLocked.status === 429, `${ipLocked.status}`);
 
+// CSRF in production shape (same origin https://portal.neptive.com through the image's nginx)
+{
+  const CSRF = /Cross-site request refused|JSON body required|Origin required/;
+  const link = await agency('POST', `/neptive/agency/clients/${CP}/users`, { email, name: 'Casa Pandora' });
+  const token = link.json.url.split('/').pop();
+  const evil = { Origin: 'https://evil.example' };
+  const crossMagic = await request('POST', '/api/neptive/portal-auth/magic', { body: { token }, headers: evil });
+  const formMagic = await request('POST', '/api/neptive/portal-auth/magic', { body: { token }, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+  const rightMagic = await request('POST', '/api/neptive/portal-auth/magic', { body: { token } });
+  check(`magic consumption: cross-site ${crossMagic.status}, form ${formMagic.status}; same origin ${rightMagic.status} with a session cookie`,
+    crossMagic.status === 403 && CSRF.test(crossMagic.text) && formMagic.status === 403 && rightMagic.status === 201 && !!rightMagic.jar.neptive_portal, rightMagic.text);
+  const s = rightMagic.jar.neptive_portal.value;
+  const ped = sql(`select id from neptive_editorial_plans where "customerId"='${CP}' and "deletedAt" is null order by "createdAt" limit 1`);
+  const crossPed = await request('POST', `/api/neptive/portal/peds/${ped}/transition`, { body: { status: 'DRAFT' }, cookies: { neptive_portal: s }, headers: evil });
+  const rightPed = await request('POST', `/api/neptive/portal/peds/${ped}/transition`, { body: { status: 'DRAFT' }, cookies: { neptive_portal: s } });
+  check(`PED transition: cross-site ${crossPed.status}; same origin ${rightPed.status}`, crossPed.status === 403 && CSRF.test(crossPed.text) && !CSRF.test(rightPed.text), rightPed.text.slice(0, 60));
+  const crossAppr = await request('POST', `/api/neptive/portal/approvals/00000000-0000-4000-8000-000000000000/transition`, { body: { status: 'APPROVED' }, cookies: { neptive_portal: s }, headers: evil });
+  check(`approval transition: cross-site ${crossAppr.status} (refused before any lookup)`, crossAppr.status === 403 && CSRF.test(crossAppr.text));
+  const crossOut = await request('POST', '/api/neptive/portal-auth/logout', { body: {}, cookies: { neptive_portal: s }, headers: evil });
+  check(`logout cross-site ${crossOut.status}, session still alive`, crossOut.status === 403 && (await request('GET', '/api/neptive/portal/me', { cookies: { neptive_portal: s } })).status === 200);
+  const rightOut = await request('POST', '/api/neptive/portal-auth/logout', { body: {}, cookies: { neptive_portal: s } });
+  check(`logout same origin ${rightOut.status}, session gone`, rightOut.status === 201 && (await request('GET', '/api/neptive/portal/me', { cookies: { neptive_portal: s } })).status === 401);
+}
+
 // cleanup
 const removed = await agency('DELETE', `/neptive/agency/clients/${CP}/users/${userId}/password`, {});
 check('cleanup: password removed', removed.status === 200 && removed.json.removed === true, removed.text);
