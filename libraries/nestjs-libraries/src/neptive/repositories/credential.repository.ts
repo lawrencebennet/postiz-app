@@ -39,6 +39,15 @@ export class NeptiveCredentialRepository {
       where: {
         id: { in: users.map((user) => user.customerId) },
         deletedAt: null,
+        // live organization too (same rule as a session: NeptivePortalAuthService.resolve)
+        orgId: {
+          in: (
+            await this.prisma.organization.findMany({
+              where: { id: { in: users.map((user) => user.orgId) }, deletedAt: null },
+              select: { id: true },
+            })
+          ).map((org) => org.id),
+        },
       },
       select: { id: true, orgId: true, name: true },
     });

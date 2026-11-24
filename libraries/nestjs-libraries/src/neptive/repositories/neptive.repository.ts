@@ -174,6 +174,21 @@ export class NeptiveRepository {
     });
   }
 
+  /** live organization (not soft-deleted); used on every portal request */
+  liveOrganization(orgId: string) {
+    return this.prisma.organization.findFirst({
+      where: { id: orgId, deletedAt: null },
+      select: { id: true },
+    });
+  }
+
+  revokeCustomerSessions(orgId: string, customerId: string) {
+    return this.prisma.neptivePortalSession.updateMany({
+      where: { orgId, customerId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+  }
+
   revokeSession(id: string) {
     return this.prisma.neptivePortalSession.update({
       where: { id },

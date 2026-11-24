@@ -310,8 +310,10 @@ clearAttempts();
 // ---------------------------------------------------------------- 8. direct API abuse
 const aSession = (await portalLogin(CP_EMAIL, SAME)).session;
 check('(setup) customer A password session', !!aSession);
-const B_PED = '8565dcbd-66c9-45ab-806f-7d6e971a9393';
-const B_APPR = 'a95d7435-87fe-4bfb-95b6-a0985f85ad4d';
+// customer B's rows, looked up (qa-variants.mjs re-seeds Aurora's approvals)
+const B_PED = sql(`select id from neptive_editorial_plans where "customerId"='${AURORA}' and "deletedAt" is null order by "createdAt" limit 1`);
+const B_APPR = sql(`select id from neptive_content_approvals where "customerId"='${AURORA}' and "deletedAt" is null and status='PENDING_CLIENT_APPROVAL' order by "createdAt" limit 1`);
+check('(setup) customer B has a plan and a pending approval', !!B_PED && !!B_APPR, `${B_PED} ${B_APPR}`);
 for (const [method, path, body] of [
   ['GET', `/neptive/portal/peds/${B_PED}`],
   ['GET', `/neptive/portal/approvals/${B_APPR}`],
@@ -333,10 +335,37 @@ const crossSite = await portal(aSession, '/neptive/portal/account/password', { m
 check('set-password from another origin -> 403', crossSite.status === 403, `${crossSite.status} ${crossSite.text}`);
 const formPost = await portal(aSession, '/neptive/portal/account/password', { method: 'POST', headers: { Origin: BASE, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'newPassword=Qualunque+cosa+123' });
 check('set-password as an HTML form post -> 403', formPost.status === 403, `${formPost.status} ${formPost.text}`);
-// finding, NOT changed by this work: the EXISTING portal POST endpoints accept a cross-site urlencoded form
-// (status=DRAFT on the own PED is a no-op that returns the PED, so nothing changes here)
-const legacyForm = await portal(aSession, '/neptive/portal/peds/e5cfeaf8-ad1a-4fe5-ba88-250efc8010e4/transition', { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'status=DRAFT' });
-say(`INFO existing endpoint POST /neptive/portal/peds/:id/transition as a cross-site HTML form -> ${legacyForm.status} (accepted: pre-existing CSRF exposure, see docs/client-credentials.md)`);
+// every mutating portal route: refused cross-site / as a form / without Origin, and the same request from the
+// portal origin reaches the handler (a business answer, never the CSRF refusal). Customer B (Aurora) has the
+// approvals; the transition asks for DRAFT, which a client may never set (business 403 'Forbidden', nothing
+// changes); the real approve-from-the-right-origin path is schedule-check.mjs.
+{
+  const CSRF = /Cross-site request refused|JSON body required|Origin required/;
+  const refused = (r) => r.status === 403 && CSRF.test(r.text);
+  const reached = (r) => !CSRF.test(r.text);
+  const magicToken = async (customerId, email, name) =>
+    (await agencyApi(`/neptive/agency/clients/${customerId}/users`, { method: 'POST', body: JSON.stringify({ email, name }) })).body.url.split('/').pop();
+  const bConsume = await fetch(`${API}/neptive/portal-auth/magic`, { method: 'POST', headers: ORIGIN, body: JSON.stringify({ token: await magicToken(AURORA, AURORA_EMAIL, 'Aurora') }) });
+  const bSession = bConsume.headers.get('neptive-portal');
+  const PED_A = sql(`select id from neptive_editorial_plans where "customerId"='${CP}' and "deletedAt" is null order by "createdAt" limit 1`);
+  const routes = [
+    ['approval transition', `/neptive/portal/approvals/${B_APPR}/transition`, () => ({ status: 'DRAFT' }), bSession],
+    ['approval comment', `/neptive/portal/approvals/${B_APPR}/comments`, () => ({ body: 'QA: controllo CSRF (locale)' }), bSession],
+    ['PED transition', `/neptive/portal/peds/${PED_A}/transition`, () => ({ status: 'DRAFT' }), aSession],
+    ['magic-link consumption', '/neptive/portal-auth/magic', async () => ({ token: await magicToken(CP, CP_EMAIL, 'Casa Pandora') }), null],
+    ['logout', '/neptive/portal-auth/logout', () => ({}), null],
+  ];
+  for (const [what, path, bodyOf, session] of routes) {
+    const body = await bodyOf();
+    const cross = await portal(session, path, { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const form = await portal(session, path, { method: 'POST', headers: { Origin: BASE, 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams(body).toString() });
+    const bare = await portal(session, path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const right = await portal(session, path, { method: 'POST', headers: ORIGIN, body: JSON.stringify(body) });
+    check(`CSRF ${what}: cross-site ${cross.status}, form ${form.status}, no Origin ${bare.status} (refused); same origin ${right.status} (reached the handler)`,
+      refused(cross) && refused(form) && refused(bare) && reached(right), right.text.slice(0, 110));
+  }
+  check("B's approval still pending after the CSRF checks", sql(`select status from neptive_content_approvals where id='${B_APPR}'`) === 'PENDING_CLIENT_APPROVAL');
+}
 const loginCross = await fetch(`${API}/neptive/portal-auth/login`, { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' }, body: JSON.stringify({ email: CP_EMAIL, password: SAME }) });
 check('login from another origin -> 403 (login CSRF)', loginCross.status === 403, `${loginCross.status}`);
 const tempAgain = await agencyApi(`/neptive/agency/clients/${CP}/users/${cpUser}/temporary-password`, { method: 'POST', body: '{}' });
@@ -356,6 +385,31 @@ const agencyCross = await agencyApi(`/neptive/agency/clients/${AURORA}/users/${c
 check('agency: user of customer A through customer B URL -> 404', agencyCross.status === 404, `${agencyCross.status}`);
 const projection = await agencyApi(`/neptive/agency/clients/${CP}`);
 check('agency client detail carries no hash', !JSON.stringify(projection.body).match(/\$2[aby]\$|passwordHash/), Object.keys(projection.body.users?.[0] || {}).join(','));
+
+// ---------------------------------------------------------------- 8b. a removed customer loses its sessions
+{
+  const created = await agencyApi('/neptive/agency/clients', { method: 'POST', body: JSON.stringify({ name: `QA rimosso ${Date.now()}` }) });
+  const gone = created.body.id;
+  const invited = await agencyApi(`/neptive/agency/clients/${gone}/users`, { method: 'POST', body: JSON.stringify({ email: 'qa-removed@neptive.local', name: 'QA rimosso' }) });
+  const consume = await fetch(`${API}/neptive/portal-auth/magic`, { method: 'POST', headers: ORIGIN, body: JSON.stringify({ token: invited.body.url.split('/').pop() }) });
+  const goneSession = consume.headers.get('neptive-portal');
+  const before = await portal(goneSession, '/neptive/portal/content?state=all');
+  check('(setup) session of a throwaway customer reads /content', before.status === 200, `${before.status}`);
+  // the customer row soft-deleted directly (as a stale row would be), sessions NOT revoked: resolve() alone must refuse
+  sql(`update "Customer" set "deletedAt" = now() where id = '${gone}'`);
+  for (const path of ['/neptive/portal/me', '/neptive/portal/content?state=all', '/neptive/portal/dashboard']) {
+    const r = await portal(goneSession, path);
+    check(`soft-deleted customer: GET ${path} -> 401`, r.status === 401, `${r.status}`);
+  }
+  sql(`update "Customer" set "deletedAt" = null where id = '${gone}'`);
+  check('(setup) customer back: the same session works again', (await portal(goneSession, '/neptive/portal/me')).status === 200);
+  const removed = await agencyApi(`/neptive/agency/clients/${gone}`, { method: 'DELETE', body: '{}' });
+  const revoked = sql(`select count(*) filter (where "revokedAt" is null) from neptive_portal_sessions where "customerId" = '${gone}'`);
+  check('agency deletes the customer: its sessions are revoked', removed.status === 200 && revoked === '0', `${removed.status}, live sessions ${revoked}`);
+  sql(`update "Customer" set "deletedAt" = null where id = '${gone}'`);
+  check('revoked sessions stay dead even if the customer row came back', (await portal(goneSession, '/neptive/portal/me')).status === 401);
+  sql(`update "Customer" set "deletedAt" = now() where id = '${gone}'`);
+}
 
 // leave Casa Pandora as found: no password
 await agencyApi(`/neptive/agency/clients/${CP}/users/${cpUser}/password`, { method: 'DELETE', body: '{}' });

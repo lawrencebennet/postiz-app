@@ -96,9 +96,21 @@ function world() {
     else credentials.push({ id: id('cred'), ...data });
   };
 
+  const organizations = [{ id: 'org-1', deletedAt: null as Date | null }];
   const repo = {
     customerInOrg: async (orgId: string, customerId: string) =>
       customers.find((c) => c.id === customerId && c.orgId === orgId && !c.deletedAt) || null,
+    liveOrganization: async (orgId: string) => organizations.find((o) => o.id === orgId && !o.deletedAt) || null,
+    softDeleteCustomer: async (orgId: string, customerId: string) => {
+      const customer = customers.find((c) => c.id === customerId && c.orgId === orgId);
+      if (customer) customer.deletedAt = new Date(now);
+      return { count: customer ? 1 : 0 };
+    },
+    revokeCustomerSessions: async (orgId: string, customerId: string) => {
+      const live = sessions.filter((s) => s.orgId === orgId && s.customerId === customerId && !s.revokedAt);
+      live.forEach((s) => (s.revokedAt = new Date(now)));
+      return { count: live.length };
+    },
     clientUserById: async (orgId: string, customerId: string, userId: string) =>
       users.find((u) => u.id === userId && u.orgId === orgId && u.customerId === customerId && !u.deletedAt) || null,
     listClientUsers: async (orgId: string, customerId: string) =>
@@ -141,7 +153,11 @@ function world() {
     loginCandidates: async (email: string) =>
       users
         .filter((u) => u.email === email && !u.deletedAt && u.activated)
-        .map((u) => ({ u, c: credentials.find((c) => c.clientUserId === u.id), cust: customers.find((c) => c.id === u.customerId && !c.deletedAt) }))
+        .map((u) => ({
+          u,
+          c: credentials.find((c) => c.clientUserId === u.id),
+          cust: customers.find((c) => c.id === u.customerId && c.orgId === u.orgId && !c.deletedAt && organizations.some((o) => o.id === c.orgId && !o.deletedAt)),
+        }))
         .filter((r) => r.c && r.cust)
         .map(({ u, c, cust }) => ({
           id: u.id,
@@ -193,7 +209,7 @@ function world() {
 
   const auth = new NeptivePortalAuthService(repo as any, credentialRepo as any);
   const service = new NeptivePortalCredentialsService(repo as any, credentialRepo as any, auth);
-  return { customers, users, credentials, sessions, magicLinks, attempts, activities, repo, credentialRepo, auth, service, addUser, setPassword };
+  return { customers, organizations, users, credentials, sessions, magicLinks, attempts, activities, repo, credentialRepo, auth, service, addUser, setPassword };
 }
 
 function response() {
@@ -581,6 +597,64 @@ describe('scope isolation with a password session', () => {
     await expect(w.auth.resolve(forged)).rejects.toThrow();
     // a device cookie is not a session
     await expect(w.auth.resolve(pwd.cookies[NEPTIVE_DEVICE_COOKIE])).rejects.toThrow();
+  });
+});
+
+describe('sessions of a removed customer, user or organization', () => {
+  async function loggedIn() {
+    const w = world();
+    const user = w.addUser({ customerId: 'cust-a', email: 'anna@a.it' });
+    w.setPassword(user, 'Password attuale 123');
+    const pwd = response();
+    await w.service.login({ email: 'anna@a.it', password: 'Password attuale 123' }, { ip: IP }, pwd);
+    w.magicLinks.push({ id: 'ml-1', tokenHash: hashNeptiveToken('t1'), clientUserId: user.id, customerId: 'cust-a', orgId: 'org-1', expiresAt: new Date(now + 1e9), consumedAt: null });
+    const magic = response();
+    await w.auth.consumeMagicLink('t1', magic);
+    w.magicLinks.push({ id: 'ml-2', tokenHash: hashNeptiveToken('t2'), clientUserId: user.id, customerId: 'cust-a', orgId: 'org-1', expiresAt: new Date(now + 1e9), consumedAt: null });
+    return { w, user, cookies: [pwd.cookies.neptive_portal, magic.cookies.neptive_portal] };
+  }
+
+  it('a soft-deleted customer: password and magic-link sessions stop resolving; no new login, no magic link', async () => {
+    const { w, cookies } = await loggedIn();
+    for (const cookie of cookies) expect((await w.auth.resolve(cookie)).customerId).toBe('cust-a');
+    w.customers[0].deletedAt = new Date(now);
+    for (const cookie of cookies) await expect(w.auth.resolve(cookie)).rejects.toThrow();
+    expect(await status(w.service.login({ email: 'anna@a.it', password: 'Password attuale 123' }, { ip: IP }, response()))).toBe(401);
+    expect(await status(w.auth.consumeMagicLink('t2', response()))).toBe(401);
+  });
+
+  it('deleting the customer from the agency revokes its sessions (and only its sessions)', async () => {
+    const { w, cookies } = await loggedIn();
+    const other = w.addUser({ customerId: 'cust-b', email: 'b@b.it' });
+    const otherSession = await w.repo.createSession({ tokenHash: 'b', clientUserId: other.id, customerId: 'cust-b', orgId: 'org-1', expiresAt: new Date(now + 1e9) });
+    const clients = new NeptiveClientService(w.repo as any, {} as any, {} as any, w.credentialRepo as any);
+    expect(await clients.remove('org-1', 'cust-a')).toEqual({ ok: true });
+    expect(w.sessions.filter((s) => s.customerId === 'cust-a').every((s) => s.revokedAt)).toBe(true);
+    expect(otherSession.revokedAt).toBeNull();
+    // even if the customer came back, the revoked rows stay dead
+    w.customers[0].deletedAt = null;
+    for (const cookie of cookies) await expect(w.auth.resolve(cookie)).rejects.toThrow();
+  });
+
+  it('a session whose user row no longer matches its customer or organization is refused', async () => {
+    const { w, user, cookies } = await loggedIn();
+    user.customerId = 'cust-b';
+    for (const cookie of cookies) await expect(w.auth.resolve(cookie)).rejects.toThrow();
+    user.customerId = 'cust-a';
+    user.orgId = 'org-2';
+    for (const cookie of cookies) await expect(w.auth.resolve(cookie)).rejects.toThrow();
+    user.orgId = 'org-1';
+    for (const cookie of cookies) expect((await w.auth.resolve(cookie)).customerId).toBe('cust-a');
+    // the customer moved to another organization
+    w.customers[0].orgId = 'org-2';
+    for (const cookie of cookies) await expect(w.auth.resolve(cookie)).rejects.toThrow();
+  });
+
+  it('a soft-deleted organization: sessions refused, no password login', async () => {
+    const { w, cookies } = await loggedIn();
+    w.organizations[0].deletedAt = new Date(now);
+    for (const cookie of cookies) await expect(w.auth.resolve(cookie)).rejects.toThrow();
+    expect(await status(w.service.login({ email: 'anna@a.it', password: 'Password attuale 123' }, { ip: IP }, response()))).toBe(401);
   });
 });
 

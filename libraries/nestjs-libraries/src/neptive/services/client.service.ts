@@ -187,6 +187,8 @@ export class NeptiveClientService {
   async remove(orgId: string, customerId: string) {
     await this.assertCustomer(orgId, customerId);
     await this.repo.softDeleteCustomer(orgId, customerId);
+    // a removed client loses portal access at once (resolve() also refuses sessions of a deleted customer)
+    await this.repo.revokeCustomerSessions(orgId, customerId);
     return { ok: true };
   }
 

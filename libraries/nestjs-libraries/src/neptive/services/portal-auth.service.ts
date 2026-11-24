@@ -131,6 +131,14 @@ export class NeptivePortalAuthService {
     }
   }
 
+  private async liveTenant(orgId: string, customerId: string) {
+    const [customer, organization] = await Promise.all([
+      this.repo.customerInOrg(orgId, customerId),
+      this.repo.liveOrganization(orgId),
+    ]);
+    return !!customer && !!organization;
+  }
+
   peekMagicLink(token: string) {
     return this.repo.magicLinkByHash(hashNeptiveToken(token));
   }
@@ -142,7 +150,10 @@ export class NeptivePortalAuthService {
       row.consumedAt ||
       row.expiresAt < new Date() ||
       row.clientUser.deletedAt ||
-      !row.clientUser.activated
+      !row.clientUser.activated ||
+      row.clientUser.customerId !== row.customerId ||
+      row.clientUser.orgId !== row.orgId ||
+      !(await this.liveTenant(row.orgId, row.customerId))
     ) {
       throw new UnauthorizedException('Invalid or expired link');
     }
@@ -205,8 +216,16 @@ export class NeptivePortalAuthService {
       session.customerId !== payload.customerId ||
       session.orgId !== payload.orgId ||
       session.clientUser.deletedAt ||
-      !session.clientUser.activated
+      !session.clientUser.activated ||
+      // the user row must still belong to the customer and organization the session was opened for
+      session.clientUser.customerId !== session.customerId ||
+      session.clientUser.orgId !== session.orgId
     ) {
+      throw new UnauthorizedException();
+    }
+    // the customer (not soft-deleted, same organization) and the organization must still be live: every
+    // portal route takes the customer from here, so a removed client loses access everywhere at once
+    if (!(await this.liveTenant(session.orgId, session.customerId))) {
       throw new UnauthorizedException();
     }
     return {
