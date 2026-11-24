@@ -38,7 +38,9 @@ Neptive owns:
 
 - Client identity (`Customer` + `NeptiveClientProfile`)
 - Portal users (`NeptiveClientUser`, **not** `UserOrganization`)
-- Magic-link auth (cookie `neptive_portal`, separate from Postiz `auth`)
+- Portal auth, separate from Postiz `auth` (cookie `neptive_portal`, row in `neptive_portal_sessions`): magic link,
+  or email + password (bcrypt hash in `neptive_client_credentials`, temporary password from the agency, throttling).
+  See [docs/client-credentials.md](./docs/client-credentials.md)
 - Isolation (`orgId` + `customerId`; portal ignores body/URL `customerId`)
 - PED (`NeptiveEditorialPlan` + items)
 - Approval business state (`DRAFT → PENDING_INTERNAL_REVIEW → PENDING_CLIENT_APPROVAL → APPROVED`)
@@ -75,8 +77,9 @@ Only **8** Postiz core files were touched. List + why: [NEPTIVE_CORE_TOUCHPOINTS
 HTTP:
 
 - `/neptive/agency/*` — Postiz org JWT (`auth`)
-- `/neptive/portal-auth/*` — public magic peek/consume
-- `/neptive/portal/*` — `NeptivePortalMiddleware`; customer always from session
+- `/neptive/portal-auth/*` — public: magic peek/consume, password `login`, logout (login is JSON + same-origin only)
+- `/neptive/portal/*` — `NeptivePortalMiddleware`; customer always from session. A session opened with a temporary
+  password gets only `GET /me` and `POST /account/password` (403 `PASSWORD_CHANGE_REQUIRED` for the rest)
 
 Do **not** edit Temporal `post.workflow.v1.0.x`, social providers, composer internals, or add Neptive columns on `Post` / `Integration` / `User`.
 
@@ -90,7 +93,7 @@ Architecture decision: **Option B** (isolated modules + tiny bridges). See [NEPT
 Agency tenant  = Postiz Organization
 Agency people  = Postiz UserOrganization
 Client brand   = Postiz Customer + NeptiveClientProfile
-Client people   = NeptiveClientUser + magic link
+Client people   = NeptiveClientUser + magic link and/or password (NeptiveClientCredential, own table)
 PED            = NeptiveEditorialPlan (clients see it after Send to client)
 Posts          = Postiz only
 Approval       = NeptiveContentApproval keyed by Post.group
@@ -162,7 +165,10 @@ Created by the validation harness, **not** a Postiz factory default:
 
 On a **fresh** database, register the first user at `/auth/login` (LOCAL). That user is the org admin.
 
-Client portal: Agency → client → **Client users** → invite. Copy the magic URL (Resend is unset, so email will not send). Client opens `/portal/magic/...` → Continue.
+Client portal: Agency → client → **Utenti cliente**. Per user: **Genera link di accesso** (copied; no email is sent) or
+**Genera password temporanea** (shown once; the client logs in at `/portal/login` and must choose a new password), **Rimuovi
+password**. The client sets or changes their own password at `/portal/account`. Forgotten password: the agency generates a
+temporary password or a link (no SQL, no email). Details: [docs/client-credentials.md](./docs/client-credentials.md).
 
 ### Tests
 
@@ -186,6 +192,7 @@ Evidence of the last green live run: [VERTICAL_SLICE_VALIDATION.md](./VERTICAL_S
 | [UPSTREAM_MAINTENANCE.md](./UPSTREAM_MAINTENANCE.md) | Merging official Postiz |
 | [VERTICAL_SLICE_VALIDATION.md](./VERTICAL_SLICE_VALIDATION.md) | What was proven live |
 | [EXISTING_FAILURES.md](./EXISTING_FAILURES.md) | Upstream gaps, not Neptive bugs |
+| [docs/client-credentials.md](./docs/client-credentials.md) | Portal passwords: rules, numbers, forgotten password, CSRF |
 
 ---
 
@@ -207,7 +214,10 @@ Do **not** start by forking Temporal, providers, or `Post.state`.
 Abbiamo customizzato Postiz con un layer **Neptive** sulla branch `neptive` del fork `lawrencebennet/postiz-app`.
 
 - **Tu (admin agency):** login Postiz → menu Agency → un cliente alla volta (PED, strategy, approvazioni, utenti).
-- **Il cliente:** magic link → `/portal` → vede solo il suo contenuto.
+- **Il cliente:** entra con il link di accesso (magic link) oppure con email e password da `/portal/login` → vede solo il suo
+  contenuto. La password la sceglie il cliente in "Account"; l'agenzia può solo generarne una temporanea (che il cliente deve
+  cambiare al primo accesso) o rimuoverla, mai vederla. Password dimenticata: "Genera password temporanea" o "Genera link di
+  accesso" nella scheda "Utenti cliente" e la mandi tu al cliente (il portale non invia email).
 - **Pubblicazione:** sempre Postiz (canali + composer + Temporal). Il PED **non** importa post. Quando il cliente approva uno slot del PED, i post in bozza di quello slot (variante scelta) vengono programmati alla data prevista (se è già passata: stessa ora del primo giorno utile); se la programmazione fallisce restano in bozza e l'agenzia vede l'attività "Approvato ma non programmato".
 
 Su un altro PC: clona il fork, `git checkout neptive`, crea `.env` (porta Postgres **5434**), Docker come sopra, `pnpm install` + prisma + `dev`.

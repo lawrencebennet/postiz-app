@@ -51,7 +51,7 @@ Measured with `git diff upstream/main` after the v2.26.0 merge, minus the owned 
 
 | file | change | conflict history |
 |---|---|---|
-| `libraries/nestjs-libraries/src/database/prisma/schema.prisma` | Neptive block appended (14 models; `NeptivePlanItemVariant` + 3 nullable item columns + 2 enum values added for post variants) | auto-merged |
+| `libraries/nestjs-libraries/src/database/prisma/schema.prisma` | Neptive block appended (16 models; `NeptivePlanItemVariant` + 3 nullable item columns + 2 enum values added for post variants; client passwords: `NeptiveClientCredential`, `NeptiveLoginAttempt`, enum `NeptiveCredentialSource`, `neptive_portal_sessions.passwordChangeRequired`, 5 `NeptiveActivityType` values) | auto-merged |
 | `apps/backend/src/app.module.ts` | import + register `NeptiveApiModule` | auto-merged |
 | `apps/backend/src/main.ts` | CORS allowed header `neptive-portal` (+ exposed header in NOT_SECURED) | **conflicted** in v2.26.0 merge: upstream added `x-postiz-org` headers on the same lines |
 | `apps/backend/src/services/auth/permissions/permissions.guard.ts` | skip policy check for `/neptive/portal*` | auto-merged |
