@@ -91,8 +91,14 @@ node neptive/dev/qa-credentials.mjs       # agency temporary password -> login -
 neptive/dev/schema-check.sh               # throwaway copy of the local DB at production's schema (BASE=51dd7853), plain
                                           # db push of the working tree, migrate diff + the deploy's DROP check, row counts
 node neptive/dev/prod-credentials-check.mjs   # production image (rehearse-prod-image.sh up + tls-proxy.mjs): cookies,
-                                              # restricted session, lock vs recognised browser, forged X-Forwarded-For
+                                              # restricted session, lock vs recognised browser, forged X-Forwarded-For,
+                                              # CSRF on every portal mutation in production shape
+node neptive/dev/prod-portal-browser.mjs      # same setup, real browser: magic link -> portal -> Esci -> password form
+node --env-file=.env neptive/dev/credential-race-check.mjs   # client change vs agency reset/removal on real Postgres
 ```
+
+Portal mutations (any non-GET to `/neptive/portal*`) are refused without `Origin: <FRONTEND_URL>` and a JSON body:
+scripts that call them must send both (qa-variants, schedule-check, vertical-slice do).
 
 Local dev runs NOT_SECURED (session in the `neptive-portal` header, no cookies cross-port), so the "recognised browser"
 cookie only works on the production image; every local attempt also shares one IP bucket (no proxy in front).

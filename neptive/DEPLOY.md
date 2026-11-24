@@ -200,22 +200,30 @@ identical to the repo's `dynamicconfig/`) is what finally lets the checkout go.
 - Production has `RESEND_API_KEY` but, by variable names, no `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME`: `sendEmailSync`
   returns early without them, so no email leaves today. Unchanged by this deploy.
 
-## Next deploy, prepared 2026-11-24 (not run)
+## Next deploy, prepared 2026-11-24, after the security review (not run)
 
-Supersedes the `51dd7853` image prepared on 23 Nov (do not deploy that one, nor `c073f6f9`): this image carries all
-of that pending work plus client passwords.
+Supersedes `6460782f` (prepared earlier on 24 Nov, before the security review) and `51dd7853` (23 Nov); do not
+deploy either, nor `c073f6f9` (all three removed from the workstation). This image carries all of that pending work,
+client passwords, and the fixes of the security review of 24 Nov.
 
-- Image `local/postiz-neptive:neptive-next-6460782f` (commit `6460782f` of `neptive-next`), id
-  `sha256:b6525d619f109b1e8f431ae6ea21110c155df009715f776b54a35f93a379a158`, amd64, 2.37 GB as `docker save`
-  (2,372,759,040 bytes), no `.env` / dev data (checked inside the image). Built with exactly step 1's command (`git archive`
-  + `docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=neptive`): 6 min 42 s (`pnpm install` 78 s,
-  `pnpm run build` 86 s). Commits after `6460782f` touch only dev tooling and docs.
-  Run: `neptive/scripts/deploy-prod.sh --dry-run --stop-before-schema --sha 6460782f`, then the same with
-  `--i-have-approval` instead of `--dry-run`. The dry run of 24 Nov printed all 8 steps and executed nothing.
+- Image `local/postiz-neptive:neptive-next-5a594471` (commit `5a594471` of `neptive-next`), id
+  `sha256:f31f4a72daa17056b7b47622431c46932402b7ee3640edb2bd361ace876e8864`, amd64, 2.37 GB as `docker save`
+  (2,373,207,552 bytes), no `.env` / dev data (checked inside the image). Built with exactly step 1's command (`git archive`
+  + `docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=neptive`): 6 min 25 s (`pnpm install` 85 s,
+  `pnpm run build` 79 s). Commits after `5a594471` touch only dev tooling and docs.
+  Run: `neptive/scripts/deploy-prod.sh --dry-run --stop-before-schema --sha 5a594471`, then the same with
+  `--i-have-approval` instead of `--dry-run`. The dry run of 24 Nov (16:21) printed all 8 steps and executed nothing.
 - What it carries:
   - from `51dd7853` (23 Nov): approval scheduling, `posts.service.ts` terminate guard + `deletePost` every root +
     `changeDate` restart of a waiting QUEUE post, slot lock, customer scope;
-  - new: **client passwords** (`neptive/docs/client-credentials.md`): `/portal/login` with email + password, temporary
+  - security review fixes (24 Nov): **every mutating portal request** (approval / PED transitions, comments,
+    magic-link consumption, logout, login, password) must be same-origin JSON (before: approvals could be posted by a
+    form on another site with a client's cookie); **sessions of a removed customer** (or organization) stop resolving
+    and deleting a customer revokes its sessions; client password change vs agency reset/removal is one transaction
+    and conditional; login always does 3 bcrypt comparisons; client emails stored trimmed + lower-case. Anything
+    that calls portal mutations outside the browser must send `Origin: https://portal.neptive.com` (nothing in
+    production does; the dev scripts were updated);
+  - **client passwords** (`neptive/docs/client-credentials.md`): `/portal/login` with email + password, temporary
     password from the agency ("Utenti cliente"), forced change, `/portal/account`, throttling, activity records. Magic
     links unchanged. Existing sessions and unused magic links keep working (no row is touched; every existing session
     gets `passwordChangeRequired = false`). One deliberate tightening: sessions of a user with `activated = false` stop
@@ -229,16 +237,20 @@ of that pending work plus client passwords.
   see (`prisma migrate diff`, same command as step 6): 14 statements (`CREATE TYPE`, 5 `ALTER TYPE ... ADD VALUE`,
   1 `ADD COLUMN ... DEFAULT false`, 2 `CREATE TABLE`, 4 `CREATE INDEX`, 1 `ADD CONSTRAINT`), **no DROP of any kind**, so the
   script's DROP check passes. Step 6 and 8 now also require `neptive_client_credentials` to exist.
+- Schema: `schema.prisma` is unchanged since `6460782f`, so the schema check below still applies to this image.
 - Smoke test of the image (`IMAGE=... rehearse-prod-image.sh restore` + `schema` + `up`, prod dump of 19 Nov 14:28, i.e.
   the schema from **before** the 19 Nov deploy, so its one-time diff is the cumulative 124 statements, still with no
   table/column/type drop): row counts of the 82 existing tables identical after the schema step (104 tables after),
   container start "already in sync", "Backend is running" 10 s after `docker run`, backend / frontend / orchestrator
   online with 0 restarts, container 0 restarts, `/auth/login`, `/portal/login`, `/portal/password`, `/portal/account`
   200 with no "postiz" in the HTML, `/api/neptive/portal/me` 401. Client credentials on the image, behind
-  `tls-proxy.mjs` (https, production cookie mode; `node neptive/dev/prod-credentials-check.mjs`, 15/15): session and
+  `tls-proxy.mjs` (https, production cookie mode; `node neptive/dev/prod-credentials-check.mjs`, 20/20): session and
   device cookies `Domain=.neptive.com; Secure; HttpOnly; SameSite=None`, temporary-password session refused on
   `/peds` (403), forced change works, account lock (429, `Retry-After` 900) does not stop the client's own browser, a
-  client-written `X-Forwarded-For` does not escape the IP bucket. Approval scheduling was exercised on the dev backend
+  client-written `X-Forwarded-For` does not escape the IP bucket; cross-site magic consumption / PED transition /
+  approval transition / logout 403, the same from `https://portal.neptive.com` 201. Real browser on the image
+  (`prod-portal-browser.mjs`, 6/6): magic link page -> Continua -> portal -> Esci -> `/me` 401 -> password form,
+  no page request refused. Approval scheduling was exercised on the dev backend
   (`schedule-check.mjs`, 23 Nov), not inside this container.
 - **Disk: free space first, or the preflight stops.** Read on 24 Nov: `/` 48 GB, **12 GB free** (13 GB after the 19 Nov
   deploy); the preflight wants >= 14 GB. On the server: `local/postiz-neptive:neptive` = `neptive-next-d54aa4c8` (same
