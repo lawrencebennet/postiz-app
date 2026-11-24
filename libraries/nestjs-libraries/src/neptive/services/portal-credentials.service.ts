@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   HttpException,
   Injectable,
   Logger,
@@ -302,21 +303,24 @@ export class NeptivePortalCredentialsService {
         throw new BadRequestException('PASSWORD_SAME_AS_CURRENT');
       }
 
-      await this.credentials.saveCredential({
+      // credential write (only if unchanged since it was checked), revocation of every session of this user
+      // and the new session for this browser: one transaction, see NeptiveCredentialRepository
+      const { sessionToken, tokenHash } = this.auth.newSessionToken();
+      const session = await this.credentials.replaceOwnCredential({
         clientUserId: user.id,
         orgId: user.orgId,
         customerId: user.customerId,
+        expectedHash: existing?.passwordHash || null,
         passwordHash: await hash(newPassword, BCRYPT_ROUNDS),
-        source: 'CLIENT',
-        mustChange: false,
-        setByUserId: null,
+        session: { tokenHash, expiresAt: new Date(Date.now() + SESSION_TTL_MS) },
       });
-      // every session of this user ends (other devices included); this browser gets a fresh one
-      await this.credentials.revokeUserSessions(user.id);
-      await this.auth.openPasswordSession(user, response, {
-        passwordChangeRequired: false,
-        ttlMs: SESSION_TTL_MS,
-      });
+      if (!session) {
+        // the agency reset or removed the password meanwhile: the agency action stands (and it already
+        // ended this user's sessions); nothing was written
+        throw new ConflictException('PASSWORD_CHANGED_ELSEWHERE');
+      }
+      this.auth.issueSession(user, session.id, sessionToken, response);
+      await this.repo.touchClientLogin(user.id);
       this.auth.setDeviceCookie(response, randomBytes(16).toString('hex'), emailFingerprint(user.email));
 
       if (!existing) {
@@ -362,16 +366,13 @@ export class NeptivePortalCredentialsService {
   ) {
     const user = await this.agencyUser(orgId, customerId, userId);
     const password = newTemporaryPassword();
-    const summary = await this.credentials.saveCredential({
+    const summary = await this.credentials.setAgencyCredential({
       clientUserId: user.id,
       orgId,
       customerId,
       passwordHash: await hash(password, BCRYPT_ROUNDS),
-      source: 'AGENCY',
-      mustChange: true,
       setByUserId: agencyUserId || null,
     });
-    await this.credentials.revokeUserSessions(user.id);
     await this.activity(
       orgId,
       customerId,
@@ -398,9 +399,8 @@ export class NeptivePortalCredentialsService {
     agencyUserId?: string
   ) {
     const user = await this.agencyUser(orgId, customerId, userId);
-    const removed = await this.credentials.deleteCredential(user.id);
+    const removed = await this.credentials.removeCredential(user.id);
     if (removed.count) {
-      await this.credentials.revokeUserSessions(user.id);
       await this.activity(
         orgId,
         customerId,

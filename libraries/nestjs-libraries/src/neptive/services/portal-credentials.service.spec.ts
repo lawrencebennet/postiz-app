@@ -180,22 +180,47 @@ function world() {
       credentials
         .filter((c) => c.orgId === orgId && c.customerId === customerId)
         .map((c) => ({ clientUserId: c.clientUserId, source: c.source, mustChange: c.mustChange, updatedAt: c.updatedAt })),
-    saveCredential: async (data: any) => {
-      const row = credentials.find((c) => c.clientUserId === data.clientUserId);
-      if (row) Object.assign(row, data, { updatedAt: new Date(now) });
-      else credentials.push({ id: id('cred'), ...data, updatedAt: new Date(now) });
-      const saved = credentials.find((c) => c.clientUserId === data.clientUserId);
+    // same contract as NeptiveCredentialRepository: each call is one transaction; the client write is
+    // conditional on the hash it proved (or on the row still being absent)
+    replaceOwnCredential: async (input: any) => {
+      const row = credentials.find((c) => c.clientUserId === input.clientUserId);
+      if (input.expectedHash ? !row || row.passwordHash !== input.expectedHash : !!row) {
+        return null;
+      }
+      const data = { passwordHash: input.passwordHash, source: 'CLIENT', mustChange: false, setByUserId: null, updatedAt: new Date(now) };
+      if (row) Object.assign(row, data);
+      else credentials.push({ id: id('cred'), clientUserId: input.clientUserId, orgId: input.orgId, customerId: input.customerId, ...data });
+      sessions.filter((s) => s.clientUserId === input.clientUserId && !s.revokedAt).forEach((s) => (s.revokedAt = new Date(now)));
+      return repo.createSession({
+        tokenHash: input.session.tokenHash,
+        clientUserId: input.clientUserId,
+        customerId: input.customerId,
+        orgId: input.orgId,
+        expiresAt: input.session.expiresAt,
+        passwordChangeRequired: false,
+      });
+    },
+    setAgencyCredential: async (input: any) => {
+      const data = { passwordHash: input.passwordHash, source: 'AGENCY', mustChange: true, setByUserId: input.setByUserId, updatedAt: new Date(now) };
+      const row = credentials.find((c) => c.clientUserId === input.clientUserId);
+      if (row) Object.assign(row, data);
+      else credentials.push({ id: id('cred'), clientUserId: input.clientUserId, orgId: input.orgId, customerId: input.customerId, ...data });
+      sessions.filter((s) => s.clientUserId === input.clientUserId && !s.revokedAt).forEach((s) => (s.revokedAt = new Date(now)));
+      const saved = credentials.find((c) => c.clientUserId === input.clientUserId);
       return { clientUserId: saved.clientUserId, source: saved.source, mustChange: saved.mustChange, updatedAt: saved.updatedAt };
+    },
+    removeCredential: async (clientUserId: string) => {
+      const index = credentials.findIndex((c) => c.clientUserId === clientUserId);
+      if (index >= 0) {
+        credentials.splice(index, 1);
+        sessions.filter((s) => s.clientUserId === clientUserId && !s.revokedAt).forEach((s) => (s.revokedAt = new Date(now)));
+      }
+      return { count: index >= 0 ? 1 : 0 };
     },
     deleteCredential: async (clientUserId: string) => {
       const index = credentials.findIndex((c) => c.clientUserId === clientUserId);
       if (index >= 0) credentials.splice(index, 1);
       return { count: index >= 0 ? 1 : 0 };
-    },
-    revokeUserSessions: async (clientUserId: string) => {
-      const live = sessions.filter((s) => s.clientUserId === clientUserId && !s.revokedAt);
-      live.forEach((s) => (s.revokedAt = new Date(now)));
-      return { count: live.length };
     },
     createSession: repo.createSession,
     failures: async (bucket: string, since: Date) => {
@@ -511,6 +536,68 @@ describe('temporary password and sessions', () => {
     await expect(w.auth.resolve(laptop.cookies.neptive_portal)).rejects.toThrow();
     expect((await w.auth.resolve(after.cookies.neptive_portal)).clientUserId).toBe(user.id);
     expect(colleagueSession.revokedAt).toBeNull();
+  });
+
+  // the client's change reads + verifies the credential, then hashes the new password (slow, ~70 ms in
+  // production) and writes; the agency acts in that window. bcrypt.hash is the hook for the interleaving.
+  async function interleave(agencyAction: (w: ReturnType<typeof world>, userId: string) => Promise<unknown>, withPassword = true) {
+    const bcrypt = require('bcrypt');
+    const realHash = bcrypt.hash;
+    const w = world();
+    const user = w.addUser({ customerId: 'cust-a', email: 'anna@a.it', name: 'Anna' });
+    if (withPassword) w.setPassword(user, 'Password attuale 123');
+    const session = await w.repo.createSession({ tokenHash: 'own', clientUserId: user.id, customerId: 'cust-a', orgId: 'org-1', expiresAt: new Date(now + 1e9) });
+    const identity = { sessionId: session.id, clientUserId: user.id, customerId: 'cust-a', orgId: 'org-1', email: user.email, name: user.name, role: 'CLIENT_ADMIN', passwordChangeRequired: false };
+    let agencyResult: any;
+    let fired = false;
+    jest.spyOn(bcrypt, 'hash').mockImplementation(async (...args: any[]) => {
+      if (!fired && args[0] === 'Password del cliente 9') {
+        fired = true;
+        agencyResult = await agencyAction(w, user.id);
+      }
+      return realHash(...args);
+    });
+    const res = response();
+    const error = await w.service
+      .changeOwnPassword(identity, { ...(withPassword ? { currentPassword: 'Password attuale 123' } : {}), newPassword: 'Password del cliente 9' }, res)
+      .catch((e) => e);
+    return { w, user, session, res, error, agencyResult };
+  }
+
+  it('race: agency temporary password lands while the client is changing hers -> the client change fails (409), the temporary password stands', async () => {
+    const { w, user, session, res, error, agencyResult } = await interleave((w, id) => w.service.issueTemporaryPassword('org-1', 'cust-a', id, 'agency-user-1'));
+    expect(error).toBeInstanceOf(HttpException);
+    expect(error.getStatus()).toBe(409);
+    expect(error.getResponse().message).toBe('PASSWORD_CHANGED_ELSEWHERE');
+    expect(w.credentials).toHaveLength(1);
+    expect(w.credentials[0]).toMatchObject({ source: 'AGENCY', mustChange: true });
+    expect(res.cookies.neptive_portal).toBeUndefined();
+    expect(session.revokedAt).toBeTruthy();
+    expect(w.sessions.filter((s) => s.clientUserId === user.id && !s.revokedAt)).toHaveLength(0);
+    expect((await w.service.login({ email: 'anna@a.it', password: agencyResult.password }, { ip: IP }, response())) as any).toEqual({ ok: true, passwordChangeRequired: true });
+    expect(await status(w.service.login({ email: 'anna@a.it', password: 'Password del cliente 9' }, { ip: '10.0.0.9' }, response()))).toBe(401);
+  });
+
+  it('race: agency removes the password while the client is changing it -> 409, no password comes back', async () => {
+    const { w, user, error } = await interleave((w, id) => w.service.removePassword('org-1', 'cust-a', id, 'agency-user-1'));
+    expect(error.getStatus()).toBe(409);
+    expect(w.credentials).toHaveLength(0);
+    expect(w.sessions.filter((s) => s.clientUserId === user.id && !s.revokedAt)).toHaveLength(0);
+    expect(await status(w.service.login({ email: 'anna@a.it', password: 'Password del cliente 9' }, { ip: IP }, response()))).toBe(401);
+  });
+
+  it('race: agency temporary password lands while the client sets her first password -> 409, the temporary password stands', async () => {
+    const { w, error } = await interleave((w, id) => w.service.issueTemporaryPassword('org-1', 'cust-a', id), false);
+    expect(error.getStatus()).toBe(409);
+    expect(w.credentials).toHaveLength(1);
+    expect(w.credentials[0]).toMatchObject({ source: 'AGENCY', mustChange: true });
+  });
+
+  it('no race: the same change goes through', async () => {
+    const { w, res, error: result } = await interleave(async () => undefined);
+    expect(result).toEqual({ ok: true });
+    expect(w.credentials[0]).toMatchObject({ source: 'CLIENT', mustChange: false });
+    expect(res.cookies.neptive_portal).toBeTruthy();
   });
 
   it('throttles wrong current passwords on the account page', async () => {

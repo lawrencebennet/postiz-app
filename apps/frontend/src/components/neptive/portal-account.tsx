@@ -21,6 +21,7 @@ const PASSWORD_ERRORS: Record<string, string> = {
   PASSWORD_TOO_COMMON: 'È una password troppo facile da indovinare. Scegline un’altra.',
   PASSWORD_SAME_AS_CURRENT: 'È uguale alla password attuale: scegline una nuova.',
   CURRENT_PASSWORD_WRONG: 'La password attuale non è corretta.',
+  PASSWORD_CHANGED_ELSEWHERE: 'Nel frattempo Neptive ha cambiato o rimosso la tua password. Accedi di nuovo con quella che ti ha dato, o chiedi un link di accesso.',
 };
 
 const minutes = (seconds?: number) => {

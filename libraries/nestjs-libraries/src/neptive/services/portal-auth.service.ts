@@ -83,17 +83,33 @@ export class NeptivePortalAuthService {
       expiresAt: new Date(Date.now() + options.ttlMs),
       passwordChangeRequired: options.passwordChangeRequired,
     });
+    this.issueSession(user, session.id, sessionToken, response);
     await this.repo.touchClientLogin(user.id);
+    return session;
+  }
+
+  /** a fresh random session token and its hash, for callers that create the session row themselves */
+  newSessionToken() {
+    const sessionToken = newNeptiveToken();
+    return { sessionToken, tokenHash: hashNeptiveToken(sessionToken) };
+  }
+
+  /** the JWT + cookie of an existing session row (same shape as a magic-link session) */
+  issueSession(
+    user: { id: string; customerId: string; orgId: string },
+    sessionId: string,
+    sessionToken: string,
+    response: Response
+  ) {
     const jwt = AuthService.signJWT({
       neptive: true,
-      sessionId: session.id,
+      sessionId,
       sessionToken,
       clientUserId: user.id,
       customerId: user.customerId,
       orgId: user.orgId,
     });
     this.setSessionCookie(response, jwt);
-    return session;
   }
 
   /** "recognised device" cookie: lets this browser keep logging in while the account is throttled */

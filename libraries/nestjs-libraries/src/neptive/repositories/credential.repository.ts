@@ -103,21 +103,105 @@ export class NeptiveCredentialRepository {
     });
   }
 
-  saveCredential(data: {
+  /**
+   * Client sets or changes their own password. One transaction: the credential is written only if it is
+   * still the one the client proved (same hash; or still absent for a first password), then every session
+   * of the user is revoked and the new session row is created. Returns null when the credential changed
+   * underneath (agency reset or removal in between): nothing is written.
+   *
+   * Postgres READ COMMITTED: a concurrent agency write holds the row lock; this UPDATE waits for it and
+   * then re-checks its WHERE on the committed row (new hash, or no row) and matches nothing.
+   */
+  replaceOwnCredential(input: {
+    clientUserId: string;
+    orgId: string;
+    customerId: string;
+    expectedHash: string | null;
+    passwordHash: string;
+    session: { tokenHash: string; expiresAt: Date };
+  }) {
+    const { clientUserId, orgId, customerId, expectedHash, passwordHash, session } = input;
+    return this.prisma.$transaction(async (tx) => {
+      const data = { passwordHash, source: 'CLIENT' as const, mustChange: false, setByUserId: null };
+      const written = expectedHash
+        ? await tx.neptiveClientCredential.updateMany({
+            where: { clientUserId, passwordHash: expectedHash },
+            data,
+          })
+        : // ON CONFLICT DO NOTHING: an agency password created meanwhile wins, the client gets a conflict
+          await tx.neptiveClientCredential.createMany({
+            data: [{ clientUserId, orgId, customerId, ...data }],
+            skipDuplicates: true,
+          });
+      if (!written.count) {
+        return null;
+      }
+      await tx.neptivePortalSession.updateMany({
+        where: { clientUserId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return tx.neptivePortalSession.create({
+        data: {
+          tokenHash: session.tokenHash,
+          clientUserId,
+          customerId,
+          orgId,
+          expiresAt: session.expiresAt,
+          passwordChangeRequired: false,
+        },
+      });
+    });
+  }
+
+  /** agency temporary password: credential write + revocation of all the user's sessions, one transaction */
+  setAgencyCredential(data: {
     clientUserId: string;
     orgId: string;
     customerId: string;
     passwordHash: string;
-    source: NeptiveCredentialSource;
-    mustChange: boolean;
     setByUserId: string | null;
-  }) {
-    const { clientUserId, ...rest } = data;
-    return this.prisma.neptiveClientCredential.upsert({
-      where: { clientUserId },
-      create: data,
-      update: rest,
-      select: CREDENTIAL_SUMMARY_SELECT,
+  }): Promise<NeptiveCredentialSummary> {
+    const { clientUserId } = data;
+    const fields = {
+      passwordHash: data.passwordHash,
+      source: 'AGENCY' as const,
+      mustChange: true,
+      setByUserId: data.setByUserId,
+    };
+    return this.prisma.$transaction(async (tx) => {
+      // update, else insert, else (a client insert won the race) update the row that now exists
+      let written = await tx.neptiveClientCredential.updateMany({ where: { clientUserId }, data: fields });
+      if (!written.count) {
+        written = await tx.neptiveClientCredential.createMany({
+          data: [{ clientUserId, orgId: data.orgId, customerId: data.customerId, ...fields }],
+          skipDuplicates: true,
+        });
+      }
+      if (!written.count) {
+        await tx.neptiveClientCredential.updateMany({ where: { clientUserId }, data: fields });
+      }
+      await tx.neptivePortalSession.updateMany({
+        where: { clientUserId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      return tx.neptiveClientCredential.findUniqueOrThrow({
+        where: { clientUserId },
+        select: CREDENTIAL_SUMMARY_SELECT,
+      });
+    });
+  }
+
+  /** agency removal: credential delete + revocation of all the user's sessions, one transaction */
+  removeCredential(clientUserId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const removed = await tx.neptiveClientCredential.deleteMany({ where: { clientUserId } });
+      if (removed.count) {
+        await tx.neptivePortalSession.updateMany({
+          where: { clientUserId, revokedAt: null },
+          data: { revokedAt: new Date() },
+        });
+      }
+      return removed;
     });
   }
 
