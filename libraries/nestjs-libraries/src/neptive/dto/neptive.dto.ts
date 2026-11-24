@@ -70,6 +70,34 @@ export class InviteNeptiveClientUserDto {
   role?: 'CLIENT_ADMIN' | 'CLIENT_MEMBER';
 }
 
+// Portal password login. No @IsEmail on purpose: a malformed email gets the same generic 401 as a
+// wrong password, not a different 400. Length caps only bound the work per request.
+export class NeptivePortalLoginDto {
+  @IsString()
+  @MaxLength(320)
+  email: string;
+
+  @IsString()
+  @MaxLength(512)
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  account?: string;
+}
+
+export class ChangeNeptivePortalPasswordDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  currentPassword?: string;
+
+  @IsString()
+  @MaxLength(512)
+  newPassword: string;
+}
+
 export class CreateNeptivePedDto {
   @IsString()
   @MinLength(1)

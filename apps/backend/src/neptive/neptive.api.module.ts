@@ -2,6 +2,7 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { NeptiveModule } from '@gitroom/nestjs-libraries/neptive/neptive.module';
 import { NeptiveAgencyController } from '@gitroom/backend/neptive/agency.controller';
 import {
+  NeptivePortalAccountController,
   NeptivePortalAuthController,
   NeptivePortalController,
 } from '@gitroom/backend/neptive/portal.controller';
@@ -16,6 +17,7 @@ import { NeptiveBrandErrorsInterceptor } from '@gitroom/backend/neptive/brand-er
     NeptiveAgencyController,
     NeptivePortalAuthController,
     NeptivePortalController,
+    NeptivePortalAccountController,
   ],
   providers: [
     NeptivePortalMiddleware,
@@ -27,6 +29,8 @@ import { NeptiveBrandErrorsInterceptor } from '@gitroom/backend/neptive/brand-er
 export class NeptiveApiModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(AuthMiddleware).forRoutes(NeptiveAgencyController);
-    consumer.apply(NeptivePortalMiddleware).forRoutes(NeptivePortalController);
+    consumer
+      .apply(NeptivePortalMiddleware)
+      .forRoutes(NeptivePortalController, NeptivePortalAccountController);
   }
 }

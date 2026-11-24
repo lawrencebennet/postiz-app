@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Param, Post, Query, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Header,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Organization } from '@prisma/client';
 import { PrismaService } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
@@ -12,12 +24,18 @@ import { NeptiveDeliverableService } from '@gitroom/nestjs-libraries/neptive/ser
 import { NeptiveReportService } from '@gitroom/nestjs-libraries/neptive/services/report.service';
 import { NeptiveClientService } from '@gitroom/nestjs-libraries/neptive/services/client.service';
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
+import { NeptivePortalCredentialsService } from '@gitroom/nestjs-libraries/neptive/services/portal-credentials.service';
+import { NeptiveSameOriginGuard } from '@gitroom/nestjs-libraries/neptive/auth/request-guards';
+import { clientIp } from '@gitroom/nestjs-libraries/neptive/domain/credentials';
+import { NEPTIVE_DEVICE_COOKIE } from '@gitroom/nestjs-libraries/neptive/services/portal-auth.service';
 import {
   GetNeptivePortal,
 } from '@gitroom/nestjs-libraries/neptive/portal.from.request';
 import { NeptivePortalIdentity } from '@gitroom/nestjs-libraries/neptive/services/portal-auth.service';
 import {
+  ChangeNeptivePortalPasswordDto,
   ConsumeNeptiveMagicLinkDto,
+  NeptivePortalLoginDto,
   CreateNeptiveApprovalCommentDto,
   TransitionNeptiveApprovalDto,
   TransitionNeptivePedDto,
@@ -25,7 +43,30 @@ import {
 
 @Controller('/neptive/portal-auth')
 export class NeptivePortalAuthController {
-  constructor(private auth: NeptivePortalAuthService) {}
+  constructor(
+    private auth: NeptivePortalAuthService,
+    private credentials: NeptivePortalCredentialsService
+  ) {}
+
+  // email + password -> the same portal session a magic link opens (see neptive/docs/client-credentials.md)
+  @Post('/login')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(NeptiveSameOriginGuard)
+  login(
+    @Body() body: NeptivePortalLoginDto,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    return this.credentials.login(
+      body,
+      {
+        ip: clientIp(request.headers['x-forwarded-for'], request.socket?.remoteAddress),
+        deviceCookie: request.cookies?.[NEPTIVE_DEVICE_COOKIE] as string | undefined,
+      },
+      response
+    );
+  }
 
   @Get('/magic/:token')
   async peek(@Param('token') token: string) {
@@ -72,7 +113,8 @@ export class NeptivePortalController {
     private strategy: NeptiveStrategyService,
     private deliverables: NeptiveDeliverableService,
     private reports: NeptiveReportService,
-    private postiz: PostizAdapter
+    private postiz: PostizAdapter,
+    private credentials: NeptivePortalCredentialsService
   ) {}
 
   private async org(portal: NeptivePortalIdentity): Promise<Organization> {
@@ -82,12 +124,17 @@ export class NeptivePortalController {
   }
 
   @Get('/me')
-  me(@GetNeptivePortal() portal: NeptivePortalIdentity) {
+  async me(@GetNeptivePortal() portal: NeptivePortalIdentity) {
+    const password = await this.credentials.status(portal.clientUserId);
     return {
       name: portal.name,
       email: portal.email,
       role: portal.role,
       customerId: portal.customerId,
+      passwordChangeRequired: portal.passwordChangeRequired,
+      hasPassword: password.hasPassword,
+      passwordTemporary: password.passwordTemporary,
+      passwordUpdatedAt: password.passwordUpdatedAt,
     };
   }
 
@@ -232,5 +279,23 @@ export class NeptivePortalController {
       portal.customerId,
       date || '30'
     );
+  }
+}
+
+// The client's own account. Same middleware as /neptive/portal (customer and user from the session only).
+@Controller('/neptive/portal/account')
+export class NeptivePortalAccountController {
+  constructor(private credentials: NeptivePortalCredentialsService) {}
+
+  @Post('/password')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(NeptiveSameOriginGuard)
+  changePassword(
+    @GetNeptivePortal() portal: NeptivePortalIdentity,
+    @Body() body: ChangeNeptivePortalPasswordDto,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    return this.credentials.changeOwnPassword(portal, body, response);
   }
 }

@@ -6,6 +6,7 @@ import {
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NeptiveClientUserRole } from '@prisma/client';
 import { NeptiveRepository } from '@gitroom/nestjs-libraries/neptive/repositories/neptive.repository';
+import { NeptiveCredentialRepository } from '@gitroom/nestjs-libraries/neptive/repositories/credential.repository';
 import { PostizAdapter } from '@gitroom/nestjs-libraries/neptive/adapters/postiz.adapter';
 import { hashNeptiveToken, newNeptiveToken } from '@gitroom/nestjs-libraries/neptive/domain/tokens';
 import {
@@ -25,7 +26,8 @@ export class NeptiveClientService {
   constructor(
     private repo: NeptiveRepository,
     private postiz: PostizAdapter,
-    private email: EmailService
+    private email: EmailService,
+    private credentials?: NeptiveCredentialRepository
   ) {}
 
   async assertCustomer(orgId: string, customerId: string) {
@@ -67,6 +69,13 @@ export class NeptiveClientService {
       customerId
     );
     const users = await this.repo.listClientUsers(orgId, customerId);
+    // password state only (summary select: no hash column is read)
+    const passwords = new Map(
+      (this.credentials
+        ? await this.credentials.credentialSummaries(orgId, customerId)
+        : []
+      ).map((row) => [row.clientUserId, row])
+    );
     return {
       id: customer.id,
       name: customer.name,
@@ -95,6 +104,9 @@ export class NeptiveClientService {
         name: user.name,
         role: user.role,
         lastLoginAt: user.lastLoginAt,
+        hasPassword: passwords.has(user.id),
+        passwordTemporary: !!passwords.get(user.id)?.mustChange,
+        passwordUpdatedAt: passwords.get(user.id)?.updatedAt || null,
       })),
     };
   }

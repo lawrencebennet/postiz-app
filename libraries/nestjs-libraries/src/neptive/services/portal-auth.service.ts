@@ -6,6 +6,7 @@ import { Response } from 'express';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { getCookieUrlFromDomain } from '@gitroom/helpers/subdomain/subdomain.management';
 import { NeptiveRepository } from '@gitroom/nestjs-libraries/neptive/repositories/neptive.repository';
+import { NeptiveCredentialRepository } from '@gitroom/nestjs-libraries/neptive/repositories/credential.repository';
 import {
   hashNeptiveToken,
   newNeptiveToken,
@@ -19,11 +20,19 @@ export type NeptivePortalIdentity = {
   email: string;
   name: string;
   role: string;
+  // session opened with a temporary password: only /me and the password change answer
+  passwordChangeRequired: boolean;
 };
+
+export const NEPTIVE_DEVICE_COOKIE = 'neptive_portal_device';
+const DEVICE_TTL_MS = 1000 * 60 * 60 * 24 * 180;
 
 @Injectable()
 export class NeptivePortalAuthService {
-  constructor(private repo: NeptiveRepository) {}
+  constructor(
+    private repo: NeptiveRepository,
+    private credentials: NeptiveCredentialRepository
+  ) {}
 
   cookieOptions() {
     return {
@@ -54,6 +63,72 @@ export class NeptivePortalAuthService {
       expires: new Date(0),
       maxAge: -1,
     });
+  }
+
+  /**
+   * Opens a portal session for a password login: same row, same JWT, same cookie as a magic link
+   * session (consumeMagicLink), plus the passwordChangeRequired flag.
+   */
+  async openPasswordSession(
+    user: { id: string; customerId: string; orgId: string },
+    response: Response,
+    options: { passwordChangeRequired: boolean; ttlMs: number }
+  ) {
+    const sessionToken = newNeptiveToken();
+    const session = await this.credentials.createSession({
+      tokenHash: hashNeptiveToken(sessionToken),
+      clientUserId: user.id,
+      customerId: user.customerId,
+      orgId: user.orgId,
+      expiresAt: new Date(Date.now() + options.ttlMs),
+      passwordChangeRequired: options.passwordChangeRequired,
+    });
+    await this.repo.touchClientLogin(user.id);
+    const jwt = AuthService.signJWT({
+      neptive: true,
+      sessionId: session.id,
+      sessionToken,
+      clientUserId: user.id,
+      customerId: user.customerId,
+      orgId: user.orgId,
+    });
+    this.setSessionCookie(response, jwt);
+    return session;
+  }
+
+  /** "recognised device" cookie: lets this browser keep logging in while the account is throttled */
+  setDeviceCookie(response: Response, deviceId: string, emailFingerprint: string) {
+    const jwt = AuthService.signJWT({
+      neptiveDevice: true,
+      d: deviceId,
+      e: emailFingerprint,
+      exp: Math.floor((Date.now() + DEVICE_TTL_MS) / 1000),
+    });
+    response.cookie(NEPTIVE_DEVICE_COOKIE, jwt, {
+      ...this.cookieOptions(),
+      expires: new Date(Date.now() + DEVICE_TTL_MS),
+    });
+  }
+
+  /** device id when the cookie is genuine and was issued for this email, else null */
+  readDevice(raw: string | undefined, emailFingerprint: string): string | null {
+    if (!raw) {
+      return null;
+    }
+    try {
+      const payload = AuthService.verifyJWT(raw) as {
+        neptiveDevice?: boolean;
+        d?: string;
+        e?: string;
+      };
+      return payload?.neptiveDevice &&
+        typeof payload.d === 'string' &&
+        payload.e === emailFingerprint
+        ? payload.d
+        : null;
+    } catch {
+      return null;
+    }
   }
 
   peekMagicLink(token: string) {
@@ -129,7 +204,8 @@ export class NeptivePortalAuthService {
       session.clientUserId !== payload.clientUserId ||
       session.customerId !== payload.customerId ||
       session.orgId !== payload.orgId ||
-      session.clientUser.deletedAt
+      session.clientUser.deletedAt ||
+      !session.clientUser.activated
     ) {
       throw new UnauthorizedException();
     }
@@ -141,6 +217,7 @@ export class NeptivePortalAuthService {
       email: session.clientUser.email,
       name: session.clientUser.name,
       role: session.clientUser.role,
+      passwordChangeRequired: !!session.passwordChangeRequired,
     };
   }
 
