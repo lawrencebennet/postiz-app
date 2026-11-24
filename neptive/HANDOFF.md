@@ -78,8 +78,11 @@ HTTP:
 
 - `/neptive/agency/*` — Postiz org JWT (`auth`)
 - `/neptive/portal-auth/*` — public: magic peek/consume, password `login`, logout (login is JSON + same-origin only)
-- `/neptive/portal/*` — `NeptivePortalMiddleware`; customer always from session. A session opened with a temporary
-  password gets only `GET /me` and `POST /account/password` (403 `PASSWORD_CHANGE_REQUIRED` for the rest)
+- `/neptive/portal/*` — `NeptivePortalMiddleware`; customer always from session, and the session resolves only while
+  its customer and organization are live. A session opened with a temporary password gets only `GET /me` and
+  `POST /account/password` (403 `PASSWORD_CHANGE_REQUIRED` for the rest)
+- CSRF: every non-GET request to `/neptive/portal*` must be same-origin JSON (`NeptiveSameOriginMiddleware`, bound to
+  every portal controller; a spec fails if a new one is not). Scripts must send `Origin: <FRONTEND_URL>`
 
 Do **not** edit Temporal `post.workflow.v1.0.x`, social providers, composer internals, or add Neptive columns on `Post` / `Integration` / `User`.
 

@@ -22,7 +22,7 @@ way back in for anyone who forgot it. No flow depends on email: production sends
 |---|---|---|
 | `POST /neptive/portal-auth/login` `{email, password, account?}` | public | 200 `{ok, passwordChangeRequired}` + session cookie; 200 `{chooseAccount:[{account,label}]}` (see "same email"); 401 `Invalid credentials`; 429 `{retryAfter}` + `Retry-After` |
 | `GET /neptive/portal/me` | portal session | now also `hasPassword`, `passwordTemporary`, `passwordUpdatedAt`, `passwordChangeRequired` |
-| `POST /neptive/portal/account/password` `{currentPassword?, newPassword}` | portal session | set or change the own password; 400 with a code (`PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_IS_EMAIL`, `PASSWORD_TOO_COMMON`, `PASSWORD_SAME_AS_CURRENT`, `CURRENT_PASSWORD_WRONG`); 429 |
+| `POST /neptive/portal/account/password` `{currentPassword?, newPassword}` | portal session | set or change the own password; 400 with a code (`PASSWORD_TOO_SHORT`, `PASSWORD_TOO_LONG`, `PASSWORD_IS_EMAIL`, `PASSWORD_TOO_COMMON`, `PASSWORD_SAME_AS_CURRENT`, `CURRENT_PASSWORD_WRONG`, `TOO_MANY_PASSWORD_ACCOUNTS`); 409 `PASSWORD_CHANGED_ELSEWHERE`; 429 |
 | `POST /neptive/agency/clients/:customerId/users/:userId/temporary-password` | agency (Postiz login) | `{password, user}`: the only time the temporary password exists in clear |
 | `DELETE /neptive/agency/clients/:customerId/users/:userId/password` | agency | `{ok, removed}` |
 | `GET /neptive/agency/clients/:customerId` | agency | `users[]` now also `hasPassword`, `passwordTemporary`, `passwordUpdatedAt` (no hash) |
@@ -35,9 +35,10 @@ Unchanged: `POST /neptive/agency/clients/:customerId/users` (create user + magic
 **Login.** Email is trimmed and lower-cased. Candidates are the client users with that email that are not
 deleted, are `activated`, have a password, and whose customer is not deleted. The password is compared with
 each candidate's hash. Wrong email, wrong password, no password set, deactivated or deleted user, deleted
-customer: all the same `401 Invalid credentials`, and every attempt does at least two bcrypt comparisons
-(dummy hash when there are fewer candidates), so the response time does not tell them apart. (An email with
-three or more password-holding accounts costs one comparison more per extra account.)
+customer or organization: all the same `401 Invalid credentials`, and every attempt does exactly three bcrypt
+comparisons (dummy hashes fill in), so the response time does not tell them apart. Three is also the most
+customers one email can hold a password for: creating a fourth (agency temporary password or the client's
+own) is refused with `400 TOO_MANY_PASSWORD_ACCOUNTS`; that person uses a magic link for the fourth.
 
 **Same email under more than one customer** (allowed by the unique key `(orgId, customerId, email)`). Each
 customer's user has its own password. The password decides: if it matches exactly one of them, that
@@ -90,6 +91,18 @@ again (the session just proved it). After the change the temporary password is d
 **Sessions.** Setting or changing a password (client) ends all of that user's sessions, including the
 current one, and opens a fresh one in the same browser; the user's other devices must log in again.
 Generating a temporary password or removing the password (agency) ends all of that user's sessions.
+Each of these is one database transaction (credential write + revocation, plus the new session for the
+client). The client's write is conditional on the hash it just verified (or on there being no password
+yet): if the agency reset or removed the password in between, the client gets `409
+PASSWORD_CHANGED_ELSEWHERE` and nothing is written, so a client can never undo an agency reset/removal.
+(Postgres READ COMMITTED: the client's UPDATE waits for the agency's row lock and re-checks its condition on
+the committed row; `neptive/dev/credential-race-check.mjs` shows it on the local database.)
+
+**Removed customers.** Every portal request (`NeptivePortalAuthService.resolve`, which all portal routes go
+through) requires the session's customer to be live (not soft-deleted, same organization), the organization
+to be live, and the user row to still belong to the session's customer and organization; otherwise 401.
+Deleting a customer from the agency also revokes all its sessions. Magic links and password logins of a
+removed customer or organization are refused.
 Deactivated (`activated = false`) and soft-deleted users cannot log in, and since this change their
 existing sessions stop resolving as well (before, only deletion did).
 
@@ -103,16 +116,39 @@ request body.
 `SameSite=None`, domain from `FRONTEND_URL`, 30 days; `neptive-portal` header in NOT_SECURED dev). The
 device cookie has the same attributes. Responses with secrets carry `Cache-Control: no-store`.
 
-**CSRF.** The new POST/DELETE endpoints (login, own password, agency temporary password / remove) accept
-only `application/json` and only from the `FRONTEND_URL` origin (`Origin`, or `Referer` when the browser
-omits `Origin`); anything else is `403` before the handler runs. A cross-site JSON request needs a CORS
-preflight, which only `FRONTEND_URL` passes. Login is covered too (login CSRF: being logged into someone
-else's account). The **existing** portal POST endpoints (approve, request changes, comments, PED
-transition) do **not** have this check: they rely on CORS alone, and Nest also parses urlencoded bodies, so
-with `SameSite=None` a plain HTML form on another site can post to them with the client's cookie in browsers
-that still send third-party cookies (verified locally: see the QA log). Left unchanged here on purpose
-(approval behaviour is out of scope); the fix is one line: apply `sameOriginProblem` to non-GET requests in
-`NeptivePortalMiddleware`, plus `Origin` in the dev scripts that call those endpoints.
+**CSRF.** Every request to a portal route that is not GET/HEAD/OPTIONS (`/neptive/portal/**` and
+`/neptive/portal-auth/**`: approval and PED transitions, comments, magic-link consumption, login, logout,
+password change, and any route added later to those controllers) must be `application/json` from the
+`FRONTEND_URL` origin (`Origin`, or `Referer` when the browser omits `Origin`); anything else is `403`
+before the handler runs. One middleware (`apps/backend/src/neptive/same-origin.middleware.ts`) bound to
+every portal controller in `neptive.api.module.ts`; `auth/portal-routes-csrf.spec.ts` scans the backend for
+portal controllers and fails if one is not bound. Needed because the session cookie is `SameSite=None` and
+Nest also parses urlencoded bodies: without it a plain HTML form on another site could approve content (and
+so schedule publication) with a client's cookie. A cross-site JSON request needs a CORS preflight, which
+only `FRONTEND_URL` passes. The agency password endpoints use the same check (`NeptiveSameOriginGuard`).
+Scripts that call portal mutations must send `Origin: <FRONTEND_URL>` (the dev scripts do).
+
+## Accepted trade-offs and assumptions
+
+- **Account-wide lock (accepted).** Five wrong passwords for an email in 15 minutes block that email for
+  every browser that has not logged in with it before, even with the right password. Anyone who knows a
+  client's email can do that, repeatedly. Accepted: it stops password guessing on one account from many
+  addresses, and it cannot hit the client's own browsers (recognised-browser cookie). Recovery for a client
+  on a new device during such an attack: the agency generates a **link di accesso** ("Utenti cliente" ->
+  "Genera link di accesso") and sends it; magic links are never throttled. Otherwise wait 15 minutes.
+- **One backend process.** The stored failure counts are shared (database), but the guard against parallel
+  guesses (requests being verified right now) is an in-memory map in the backend process. Production runs a
+  single backend process (pm2, fork mode). A second backend process or container would let each admit its
+  own burst, so the effective limit would grow with the process count: before scaling out, move that
+  reservation into Postgres (advisory lock or a reservation row) or Redis.
+- **Forwarded IP.** The IP bucket trusts the two right-most `X-Forwarded-For` entries (host nginx, then the
+  container's nginx). That holds because the backend port (3000) is not published on the host: only the
+  container's nginx is, on `127.0.0.1:4007`, behind the host nginx. If the backend were ever reachable
+  directly, or the chain changed, the IP bucket could be bypassed by a forged header (the account and
+  browser buckets would still hold): keep 3000 unpublished, and set `NEPTIVE_TRUSTED_PROXY_HOPS` if the
+  number of proxies changes.
+- **Email canonical form.** Stored and compared trimmed and lower-cased (no Unicode normalisation).
+  Existing rows were not migrated; none of the local copy's rows differ from that form.
 
 ## When a client forgets the password (no email, no SQL)
 
@@ -134,4 +170,5 @@ user from the list stops both).
 pnpm exec jest --config neptive/jest.config.ts --runInBand credentials
 node neptive/dev/qa-credentials.mjs        # local stack running; screenshots + log in neptive/dev/.data/shots/credentials/
 neptive/dev/schema-check.sh                # plain db push from the production schema on a throwaway copy
+node --env-file=.env neptive/dev/credential-race-check.mjs   # the change/reset interleaving on real Postgres
 ```
