@@ -19,7 +19,8 @@ if (!fs.existsSync(DIR + 'key.pem')) {
 }
 
 const server = https.createServer({ key: fs.readFileSync(DIR + 'key.pem'), cert: fs.readFileSync(DIR + 'cert.pem') }, (req, res) => {
-  const headers = { ...req.headers, 'x-forwarded-proto': 'https', 'x-forwarded-for': req.socket.remoteAddress };
+  const headers = { ...req.headers, 'x-forwarded-proto': 'https', // like nginx's $proxy_add_x_forwarded_for (production's host nginx): append, keep what the client wrote
+    'x-forwarded-for': [req.headers['x-forwarded-for'], req.socket.remoteAddress].filter(Boolean).join(', ') };
   const up = http.request({ host: '127.0.0.1', port: TARGET, method: req.method, path: req.url, headers }, (r) => {
     res.writeHead(r.statusCode || 502, r.headers);
     r.pipe(res);
