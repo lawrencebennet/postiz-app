@@ -61,7 +61,16 @@ export const useNeptivePortal = (path: string) => {
   const fetch = useFetch();
   const key = `/neptive/portal/${path}`;
   const load = useCallback(async () => {
-    return (await fetch(key)).json();
+    const response = await fetch(key);
+    const body = await response.json();
+    // session opened with a temporary password: the API refuses everything but /me until it is changed
+    if (response.status === 403 && body?.message === 'PASSWORD_CHANGE_REQUIRED') {
+      if (typeof window !== 'undefined' && window.location.pathname !== '/portal/password') {
+        window.location.href = '/portal/password';
+      }
+      return null;
+    }
+    return body;
   }, [fetch, key]);
   return useSWR(key, load);
 };

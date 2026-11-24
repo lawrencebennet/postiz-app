@@ -19,6 +19,7 @@ import {
   fieldClass,
   formatPeriod,
   formatWhen,
+  kindLabel,
   nextApprovalActions,
   nextPedActions,
   postPreviewText,
@@ -26,6 +27,7 @@ import {
   statusTone,
 } from '@gitroom/frontend/components/neptive/neptive.ui';
 import { useToaster } from '@gitroom/react/toaster/toaster';
+import { deleteDialog } from '@gitroom/react/helpers/delete.dialog';
 import clsx from 'clsx';
 import {
   PedCalendar,
@@ -877,56 +879,221 @@ const ReportsPanel = ({ customerId }: { customerId: string }) => {
   );
 };
 
+// One-time secret shown in the Utenti panel (temporary password or access link): never stored in the
+// page state longer than needed, copyable, gone when the panel reloads.
+type Secret = { userId: string; kind: 'password' | 'link'; value: string };
+
+const copyText = async (value: string) => {
+  try {
+    await navigator.clipboard.writeText(value);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+const passwordState = (user: any) =>
+  user.passwordTemporary
+    ? { tone: 'warn' as const, label: 'Password temporanea', note: 'Il cliente deve sceglierne una sua al primo accesso.' }
+    : user.hasPassword
+    ? {
+        tone: 'good' as const,
+        label: 'Password impostata',
+        note: `Scelta dal cliente${user.passwordUpdatedAt ? `, ${formatWhen(user.passwordUpdatedAt)}` : ''}. Neptive non la conosce.`,
+      }
+    : { tone: 'neutral' as const, label: 'Nessuna password', note: 'Entra solo con un link di accesso.' };
+
 const UsersPanel = ({ customerId }: { customerId: string }) => {
   const fetch = useFetch();
   const toaster = useToaster();
   const { data, mutate } = useNeptiveClient(customerId);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [inviteUrl, setInviteUrl] = useState('');
+  const [secret, setSecret] = useState<Secret | null>(null);
+  const [busy, setBusy] = useState('');
+
+  const showSecret = useCallback(
+    async (next: Secret) => {
+      setSecret(next);
+      const copied = await copyText(next.value);
+      const what = next.kind === 'password' ? 'Password temporanea copiata' : 'Link di accesso copiato';
+      toaster.show(copied ? `${what} negli appunti` : 'Pronto: copialo dal riquadro', 'success');
+    },
+    [toaster]
+  );
+
+  const accessLink = useCallback(
+    async (user: { id?: string; email: string; name: string }) => {
+      setBusy(`link:${user.id || 'new'}`);
+      try {
+        const response = await fetch(`/neptive/agency/clients/${customerId}/users`, {
+          method: 'POST',
+          body: JSON.stringify({ email: user.email, name: user.name }),
+        });
+        const body = await response.json().catch(() => ({}));
+        await mutate();
+        if (!response.ok || !body.url) {
+          toaster.show('Impossibile generare il link di accesso', 'warning');
+          return false;
+        }
+        await showSecret({ userId: body.id, kind: 'link', value: body.url });
+        return true;
+      } finally {
+        setBusy('');
+      }
+    },
+    [fetch, customerId, mutate, toaster, showSecret]
+  );
 
   const invite = useCallback(async () => {
-    const response = await fetch(
-      `/neptive/agency/clients/${customerId}/users`,
-      { method: 'POST', body: JSON.stringify({ email, name }) }
-    );
-    const body = await response.json();
-    await mutate();
-    if (!response.ok) {
-      toaster.show('Impossibile creare l’invito', 'warning');
+    if (!email.trim() || !name.trim()) {
+      toaster.show('Inserisci nome ed email', 'warning');
       return;
     }
-    if (body.url) {
-      setInviteUrl(body.url);
-      toaster.show('Invito creato', 'success');
-      try {
-        await navigator.clipboard.writeText(body.url);
-      } catch {}
+    if (await accessLink({ email: email.trim(), name: name.trim() })) {
+      setEmail('');
+      setName('');
     }
-    setEmail('');
-    setName('');
-  }, [fetch, customerId, email, name, mutate, toaster]);
+  }, [email, name, accessLink, toaster]);
+
+  const temporaryPassword = useCallback(
+    async (user: any) => {
+      if (
+        user.hasPassword &&
+        !(await deleteDialog(
+          `La password attuale di ${user.name} smette di funzionare e le sue sessioni aperte vengono chiuse.`,
+          'Genera password temporanea',
+          'Sostituire la password?',
+          'Annulla'
+        ))
+      ) {
+        return;
+      }
+      setBusy(`password:${user.id}`);
+      try {
+        const response = await fetch(
+          `/neptive/agency/clients/${customerId}/users/${user.id}/temporary-password`,
+          { method: 'POST', body: JSON.stringify({}) }
+        );
+        const body = await response.json().catch(() => ({}));
+        await mutate();
+        if (!response.ok || !body.password) {
+          toaster.show('Impossibile generare la password', 'warning');
+          return;
+        }
+        await showSecret({ userId: user.id, kind: 'password', value: body.password });
+      } finally {
+        setBusy('');
+      }
+    },
+    [fetch, customerId, mutate, toaster, showSecret]
+  );
+
+  const removePassword = useCallback(
+    async (user: any) => {
+      if (
+        !(await deleteDialog(
+          `${user.name} non potrà più entrare con email e password (i link di accesso continuano a funzionare). Le sue sessioni aperte vengono chiuse.`,
+          'Rimuovi password',
+          'Rimuovere la password?',
+          'Annulla',
+          true
+        ))
+      ) {
+        return;
+      }
+      setBusy(`remove:${user.id}`);
+      try {
+        const response = await fetch(`/neptive/agency/clients/${customerId}/users/${user.id}/password`, {
+          method: 'DELETE',
+          body: JSON.stringify({}),
+        });
+        await mutate();
+        if (secret?.userId === user.id && secret.kind === 'password') setSecret(null);
+        toaster.show(response.ok ? 'Password rimossa' : 'Impossibile rimuovere la password', response.ok ? 'success' : 'warning');
+      } finally {
+        setBusy('');
+      }
+    },
+    [fetch, customerId, mutate, toaster, secret]
+  );
+
+  const users = (data?.users || []) as any[];
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-[12px]">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-[12px]">
       <NeptiveCard title="Utenti cliente">
-        {(data?.users || []).map((user: any) => (
-          <div key={user.id} className="py-[8px] border-b border-newTableBorder">
-            <div className="font-[600]">{user.name}</div>
-            <div className="text-[12px] text-newTableText">{user.email} · {user.role}</div>
-          </div>
-        ))}
-        {!data?.users?.length && <NeptiveEmpty>Nessun utente cliente</NeptiveEmpty>}
+        <ul className="flex flex-col">
+          {users.map((user) => {
+            const state = passwordState(user);
+            const shown = secret?.userId === user.id ? secret : null;
+            return (
+              <li key={user.id} className="py-[14px] border-b border-newTableBorder last:border-b-0 flex flex-col gap-[10px] min-w-0" data-user={user.email}>
+                <div className="flex flex-wrap items-start justify-between gap-[8px]">
+                  <div className="min-w-0">
+                    <div className="font-[600] break-words">{user.name}</div>
+                    <div className="text-[12px] text-newTableText break-all">
+                      {user.email} · {kindLabel(user.role)}
+                    </div>
+                  </div>
+                  <NeptiveBadge tone={state.tone}>{state.label}</NeptiveBadge>
+                </div>
+                <div className="text-[12px] text-newTableText flex flex-col gap-[2px]">
+                  <span>{state.note}</span>
+                  <span>Ultimo accesso: {user.lastLoginAt ? formatWhen(user.lastLoginAt) : 'mai'}</span>
+                </div>
+                <div className="flex flex-wrap gap-[6px]">
+                  <button type="button" className="nx-btn" data-size="sm" disabled={!!busy} onClick={() => temporaryPassword(user)}>
+                    Genera password temporanea
+                  </button>
+                  {user.hasPassword && (
+                    <button type="button" className="nx-btn" data-size="sm" disabled={!!busy} onClick={() => removePassword(user)}>
+                      Rimuovi password
+                    </button>
+                  )}
+                  <button type="button" className="nx-btn" data-size="sm" disabled={!!busy} onClick={() => accessLink(user)}>
+                    Genera link di accesso
+                  </button>
+                </div>
+                {shown && (
+                  <div className="rounded-[8px] border border-newTableBorder bg-newBgColorInner p-[12px] flex flex-col gap-[8px]" role="status">
+                    <div className="text-[12px] text-newTableText">
+                      {shown.kind === 'password'
+                        ? 'Password temporanea, mostrata solo ora. Comunicala al cliente: al primo accesso da /portal/login dovrà sceglierne una sua.'
+                        : 'Link di accesso personale, valido una volta per 30 giorni. Nessuna email viene inviata: mandalo tu al cliente.'}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-[8px] min-w-0">
+                      <code className="nx-mono text-[14px] break-all select-all min-w-0 flex-1">{shown.value}</code>
+                      <button
+                        type="button"
+                        className="nx-btn"
+                        data-size="sm"
+                        onClick={async () => toaster.show((await copyText(shown.value)) ? 'Copiato' : 'Copia non riuscita: seleziona il testo', 'success')}
+                      >
+                        Copia
+                      </button>
+                      <button type="button" className="nx-btn" data-size="sm" onClick={() => setSecret(null)}>
+                        Nascondi
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+        {!users.length && <NeptiveEmpty>Nessun utente cliente</NeptiveEmpty>}
       </NeptiveCard>
-      <NeptiveCard title="Invita">
+      <NeptiveCard title="Nuovo utente">
         <div className="flex flex-col gap-[8px]">
           <input className={fieldClass} placeholder="Nome" value={name} onChange={(e) => setName(e.target.value)} />
-          <input className={fieldClass} placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <Button onClick={invite}>Invia link di accesso</Button>
-          {inviteUrl && (
-            <div className="text-[12px] break-all text-newTableText">
-              {inviteUrl}
-            </div>
+          <input className={fieldClass} placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Button onClick={invite} disabled={!!busy}>Crea e genera link di accesso</Button>
+          <p className="text-[12px] text-newTableText">
+            Il link viene copiato negli appunti: nessuna email parte dal portale. La password temporanea si genera dalla lista.
+          </p>
+          {secret && !users.some((user) => user.id === secret.userId) && (
+            <code className="nx-mono text-[12px] break-all select-all">{secret.value}</code>
           )}
         </div>
       </NeptiveCard>

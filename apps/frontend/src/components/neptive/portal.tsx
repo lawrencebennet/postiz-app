@@ -36,6 +36,7 @@ const NAV = [
   { href: '/portal/materials', label: 'Materiali' },
   { href: '/portal/reports', label: 'Report' },
   { href: '/portal/analytics', label: 'Risultati' },
+  { href: '/portal/account', label: 'Account' },
 ];
 
 const firstName = (name?: string | null) => (name || '').trim().split(/\s+/)[0] || '';
@@ -49,6 +50,21 @@ export const PortalShell = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     setNavReady(true);
   }, []);
+  // narrow screens: the section list scrolls sideways, keep the current one in view
+  useEffect(() => {
+    if (navReady) {
+      document
+        .querySelector('nav[aria-label="Sezioni del portale"] [aria-current="page"]')
+        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+  }, [navReady, pathname]);
+  // a session opened with a temporary password reaches nothing else (the API answers 403 too)
+  const mustChangePassword = !!me?.passwordChangeRequired;
+  useEffect(() => {
+    if (mustChangePassword) {
+      router.replace('/portal/password');
+    }
+  }, [mustChangePassword, router]);
 
   const logout = useCallback(async () => {
     await fetch('/neptive/portal-auth/logout', {
@@ -68,9 +84,14 @@ export const PortalShell = ({ children }: { children: React.ReactNode }) => {
             <span className="nx-label leading-none pb-[1px] hidden sm:inline">Portale clienti</span>
           </Link>
           <div className="flex items-center gap-[14px] min-w-0">
-            <span className="nx-label truncate max-w-[180px] hidden sm:block" suppressHydrationWarning>
+            <Link
+              href="/portal/account"
+              className="nx-label truncate max-w-[180px] hidden sm:block hover:!text-[var(--nx-text)]"
+              title="Il tuo account"
+              suppressHydrationWarning
+            >
               {me?.name || ''}
-            </span>
+            </Link>
             <button type="button" className="nx-btn" data-size="sm" onClick={logout}>
               Esci
             </button>
@@ -101,7 +122,7 @@ export const PortalShell = ({ children }: { children: React.ReactNode }) => {
         </nav>
       </header>
       <main className="flex-1 w-full max-w-[1180px] mx-auto px-[16px] md:px-[32px] pt-[24px] md:pt-[40px] pb-[56px] min-w-0">
-        {children}
+        {mustChangePassword ? null : children}
       </main>
       <footer className="w-full max-w-[1180px] mx-auto px-[16px] md:px-[32px] pb-[20px]">
         <div className="nx-rule pt-[12px] flex flex-wrap justify-between gap-[8px] nx-label">
@@ -132,38 +153,6 @@ export const PortalHeader = ({
     </div>
     {children && <div className="min-w-0 md:max-w-[420px] md:text-end">{children}</div>}
   </div>
-);
-
-export const PortalLogin = () => (
-  <NeptiveAuthShell
-    eyebrow="[ Portale clienti ]"
-    tag="[ Portale clienti ]"
-    title={
-      <>
-        Il tuo
-        <br />
-        portale.
-      </>
-    }
-    intro="Il piano editoriale, le anteprime dei post e le approvazioni, in un unico posto."
-  >
-    <div className="flex-1 flex flex-col">
-      <h2 className="nx-heading text-[30px] md:text-[34px]">Accedi con il tuo link</h2>
-      <p className="mt-[12px] text-[15px] leading-[1.5] text-[var(--nx-text-muted)]">
-        Per entrare usa il link personale che ti abbiamo inviato via email. Se lo hai già aperto su questo
-        dispositivo, puoi andare direttamente al portale.
-      </p>
-      <Link href="/portal" data-variant="primary" className="nx-btn mt-[24px] w-full">
-        Apri il portale <span className="nx-arrow" aria-hidden="true">↗</span>
-      </Link>
-      <p className="mt-[18px] text-[14px] text-[var(--nx-text-muted)]">
-        Non trovi il link?{' '}
-        <a className="nx-link text-[var(--nx-text)]" href="mailto:info@neptive.com">
-          Scrivi a info@neptive.com
-        </a>
-      </p>
-    </div>
-  </NeptiveAuthShell>
 );
 
 export const PortalMagic = ({ token }: { token: string }) => {
