@@ -253,6 +253,11 @@ check('magic link still logs in', new URL(magic.url()).pathname === '/portal');
 await magic.goto(BASE + '/portal/account', { waitUntil: 'networkidle' });
 await magic.waitForTimeout(1500);
 check('magic-link session: account page offers to set a password', /Imposta una password/i.test(await magic.locator('body').innerText()));
+// logout from the browser (POST /portal-auth/logout from the page: must pass the CSRF rule)
+const magicSessionValue = await magic.evaluate(() => document.cookie.split(';').map((c) => c.trim()).find((c) => c.startsWith('neptive_portal='))?.slice(15));
+await magic.getByRole('button', { name: 'Esci' }).first().click();
+await magic.waitForURL('**/portal/login', { timeout: 20000 });
+check('browser logout -> /portal/login, the session is revoked', (await portal(magicSessionValue, '/neptive/portal/me')).status === 401);
 
 // ---------------------------------------------------------------- 6. magic-link-only user unaffected (Aurora)
 const aLink = await agencyApi(`/neptive/agency/clients/${AURORA}/users`, { method: 'POST', body: JSON.stringify({ email: AURORA_EMAIL, name: 'Aurora' }) });
