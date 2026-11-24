@@ -1,8 +1,8 @@
 # Deploying the Neptive portal (portal.neptive.com)
 
 Script: `neptive/scripts/deploy-prod.sh`. Everything below was rehearsed locally on the production image
-(`neptive/dev/rehearse-prod-image.sh`, `neptive/dev/prod-check.mjs`) against a restored production dump; the server
-itself has only been read, never written. **Nothing here has been run on the server.**
+(`neptive/dev/rehearse-prod-image.sh`, `neptive/dev/prod-check.mjs`) against a restored production dump; the first run on the server was the deploy of 19 Nov (see "Deploy log"). Nothing is pending: the server runs
+`neptive-next-5a594471` since 24 Nov.
 
 ## What the server looks like (read-only checks, 19 Nov 2026)
 
@@ -200,7 +200,61 @@ identical to the repo's `dynamicconfig/`) is what finally lets the checkout go.
 - Production has `RESEND_API_KEY` but, by variable names, no `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME`: `sendEmailSync`
   returns early without them, so no email leaves today. Unchanged by this deploy.
 
-## Next deploy, prepared 2026-11-24, after the security review (not run)
+## Deploy log
+
+### 2026-11-24 (Europe/Rome), second deploy: `neptive-next-5a594471`
+
+- Command: `deploy-prod.sh --i-have-approval --stop-before-schema --sha 5a594471 --date 20261124-1626`, exit 0. Approved by
+  Lorenzo. Run started 16:26 (log: `neptive/dev/.data/deploy-20261124-1626.log`, not committed).
+- Image: `local/postiz-neptive:neptive-next-5a594471`, id `sha256:f31f4a72daa17056b7b47622431c46932402b7ee3640edb2bd361ace876e8864`
+  (now also `local/postiz-neptive:neptive`). Transfer + load about 22 minutes, site up.
+- Rollback tag: `local/postiz-neptive:rollback-20261124-1626` -> `sha256:e50c031735e4432b13cc06afa95152289af2a056829ac0985f2f3e6d558b6f93`
+  (= `neptive-next-d54aa4c8`, the image that ran until 16:48). The pre-19-Nov rollback image
+  `rollback-20261119-1930` (`d860f4a4`) was deleted beforehand (approved by Lorenzo). `neptive-next-d54aa4c8` is still tagged too.
+- Backups in `/root/backups/` (pg_restore --list ok): `postiz-db-pre-neptive-next-20261124-1626.dump` (306,537 B,
+  sha256 `7e65dd573cc1ee6eab3c20709191815588951b1cbccc38c81d1a1c6e18c51cb4`), `temporal-db-pre-neptive-next-20261124-1626.dump`
+  (90,403 B, sha256 `3ea303efa9c21eb24885123e32d6fbe0a2aec9a59acae65e32080783a571ad5d`),
+  `compose-pre-neptive-next-20261124-1626.yml`, `schema-diff-20261124-1626.sql` (14 statements, no DROP).
+- Disk: 12 GB free at start; `docker rmi rollback-20261119-1930` -> 18 GB free (no build cache to prune); after the load and
+  switch **7.2 GB free** (`/` 85 % used): the next deploy needs space again (`docker rmi` of `neptive-next-d54aa4c8` tag
+  does not free it while `rollback-20261124-1626` points to the same image).
+- Downtime: **16:48:53 -> 16:50:35 CET = 1 min 42 s**.
+- Schema: 14 statements, 0 DROP; row counts of 102 tables identical before/after (and between preflight and the stop);
+  104 tables after; `neptive_client_credentials` and `neptive_login_attempts` empty; `passwordChangeRequired` boolean default false.
+- Preflight snapshot: 12 unexpired portal sessions, Post 73 (DRAFT 41, PUBLISHED 1, QUEUE 31): identical after.
+  3 QUEUE posts were due within 3 hours (Casa Pandora IG+FB and Aurora Gallorini IG at 17:30 Rome); no pending approval had
+  a DRAFT post with a past date. Aurora Performer: 11 "Tale e Quale Show" groups (DRAFT, 18:00 Rome on 24 Nov, pending client
+  approval) would be moved to the next day if approved after 18:00.
+- Post-deploy checks: container on the new id, 0 restarts; pm2 backend/frontend/orchestrator online, 0 restarts; "Backend is
+  running"; no prisma/Temporal errors in the log (only the normal "already in sync" push output); `/auth/login`,
+  `/portal/login`, `/portal/account`, `/privacy` 200 without "Postiz"; `/api/neptive/portal/me` 401; POST to
+  `/api/neptive/portal-auth/login` with `Origin: https://example.org` 403; 2 min soak (144 requests): 96 x 200, 48 x 401,
+  0 x 502; screenshots `neptive/dev/.data/shots/live/20261124-portal-login-{1440x900,390x844}.png`.
+- Deviations: none from the runbook. No client login, admin login or magic link was used for verification.
+
+### 2026-11-19 (Europe/Rome), first deploy of `neptive-next`
+
+- Command: `deploy-prod.sh --i-have-approval --stop-before-schema --sha d54aa4c8 --date 20261119-1930`, exit 0. Approved by Lorenzo.
+- Image: `local/postiz-neptive:neptive-next-d54aa4c8`, id `sha256:e50c031735e4432b13cc06afa95152289af2a056829ac0985f2f3e6d558b6f93`
+  (2.37 GB transferred; now also tagged `local/postiz-neptive:neptive`).
+- Rollback tag: `local/postiz-neptive:rollback-20261119-1930` -> `sha256:d860f4a47d91211bfd6364c7eb46d7f50b16a775d76e0f550372c6ea716d862d`
+  (the image that ran until 19:38). Left in place.
+- Backups in `/root/backups/` (sha256 verified, `pg_restore --list` ok): `postiz-db-pre-neptive-next-20261119-1930.dump`
+  (233,890 B, `2bd3069f…ebb`), `temporal-db-pre-neptive-next-20261119-1930.dump` (83,034 B, `094873a0…5d2`),
+  `compose-pre-neptive-next-20261119-1930.yml`, `schema-diff-20261119-1930.sql`.
+- Disk before the load: `docker builder prune -af` freed 10.19 GB (`/` 15 GB -> 23 GB free); after the load 13 GB free.
+- Transfer + load: about 25 minutes (19:13 start, site up). Downtime: **19:38:39 -> 19:40:16 CET = 1 min 37 s**
+  (stop, baseline counts, schema diff + `db push`, recreate, "Backend is running").
+- Schema: 110 statements, 11 DROP INDEX/CONSTRAINT only, 0 table/column drops; row counts of all 82 tables unchanged
+  after the schema step; 20 new tables, `neptive_plan_item_variants` present and empty.
+- Deviations from the runbook: the `--stop-before-schema` flag was added just before the run (and the preflight gained a
+  portal-session and QUEUE snapshot); a fresh row-count baseline is taken after the stop. The transfer took longer than
+  the 20 minutes estimated. Nothing else.
+- Post-deploy checks: 3 apps online with 0 restarts, no 5xx in the container's nginx log, 72 requests over 2 minutes to
+  `/auth/login`, `/portal/login`, `/api/neptive/portal/me` returned 200/200/401 (0 x 502), QUEUE posts 30 unchanged,
+  unexpired portal sessions 5 before and after, public screenshots in `neptive/dev/.data/shots/live/`.
+
+### 2026-11-24 image `5a594471`: what it carried (prepared before the deploy, deployed 16:48 CET)
 
 Supersedes `6460782f` (prepared earlier on 24 Nov, before the security review) and `51dd7853` (23 Nov); do not
 deploy either, nor `c073f6f9` (all three removed from the workstation). This image carries all of that pending work,
@@ -275,30 +329,6 @@ client passwords, and the fixes of the security review of 24 Nov.
   the new schema exactly as described in "Rollback" (and would now also list the two new tables and the new column as
   data loss once they hold rows): keep using the override. Client passwords stored meanwhile stay in their table; the old
   code ignores them, clients fall back to magic links.
-
-## Deploy log
-
-### 2026-11-19 (Europe/Rome), first deploy of `neptive-next`
-
-- Command: `deploy-prod.sh --i-have-approval --stop-before-schema --sha d54aa4c8 --date 20261119-1930`, exit 0. Approved by Lorenzo.
-- Image: `local/postiz-neptive:neptive-next-d54aa4c8`, id `sha256:e50c031735e4432b13cc06afa95152289af2a056829ac0985f2f3e6d558b6f93`
-  (2.37 GB transferred; now also tagged `local/postiz-neptive:neptive`).
-- Rollback tag: `local/postiz-neptive:rollback-20261119-1930` -> `sha256:d860f4a47d91211bfd6364c7eb46d7f50b16a775d76e0f550372c6ea716d862d`
-  (the image that ran until 19:38). Left in place.
-- Backups in `/root/backups/` (sha256 verified, `pg_restore --list` ok): `postiz-db-pre-neptive-next-20261119-1930.dump`
-  (233,890 B, `2bd3069f…ebb`), `temporal-db-pre-neptive-next-20261119-1930.dump` (83,034 B, `094873a0…5d2`),
-  `compose-pre-neptive-next-20261119-1930.yml`, `schema-diff-20261119-1930.sql`.
-- Disk before the load: `docker builder prune -af` freed 10.19 GB (`/` 15 GB -> 23 GB free); after the load 13 GB free.
-- Transfer + load: about 25 minutes (19:13 start, site up). Downtime: **19:38:39 -> 19:40:16 CET = 1 min 37 s**
-  (stop, baseline counts, schema diff + `db push`, recreate, "Backend is running").
-- Schema: 110 statements, 11 DROP INDEX/CONSTRAINT only, 0 table/column drops; row counts of all 82 tables unchanged
-  after the schema step; 20 new tables, `neptive_plan_item_variants` present and empty.
-- Deviations from the runbook: the `--stop-before-schema` flag was added just before the run (and the preflight gained a
-  portal-session and QUEUE snapshot); a fresh row-count baseline is taken after the stop. The transfer took longer than
-  the 20 minutes estimated. Nothing else.
-- Post-deploy checks: 3 apps online with 0 restarts, no 5xx in the container's nginx log, 72 requests over 2 minutes to
-  `/auth/login`, `/portal/login`, `/api/neptive/portal/me` returned 200/200/401 (0 x 502), QUEUE posts 30 unchanged,
-  unexpired portal sessions 5 before and after, public screenshots in `neptive/dev/.data/shots/live/`.
 
 ## Static privacy page (host nginx, outside the image)
 
