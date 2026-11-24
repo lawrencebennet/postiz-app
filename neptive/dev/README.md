@@ -81,6 +81,22 @@ node neptive/dev/schedule-check.mjs   # approval -> scheduling e2e against the r
 
 The existing single-post items are not touched by the seed. Loading variants by SQL: `neptive/docs/variants-loading.md`.
 
+## Client passwords (see `neptive/docs/client-credentials.md`)
+
+```
+node neptive/dev/qa-credentials.mjs       # agency temporary password -> login -> forced change -> portal, throttling + release,
+                                          # change kills the other session, remove password (magic link still works),
+                                          # Aurora magic-link-only, same email under two customers, API abuse attempts;
+                                          # shots 1440x900 + 390x844 and log.txt in .data/shots/credentials/
+neptive/dev/schema-check.sh               # throwaway copy of the local DB at production's schema (BASE=51dd7853), plain
+                                          # db push of the working tree, migrate diff + the deploy's DROP check, row counts
+node neptive/dev/prod-credentials-check.mjs   # production image (rehearse-prod-image.sh up + tls-proxy.mjs): cookies,
+                                              # restricted session, lock vs recognised browser, forged X-Forwarded-For
+```
+
+Local dev runs NOT_SECURED (session in the `neptive-portal` header, no cookies cross-port), so the "recognised browser"
+cookie only works on the production image; every local attempt also shares one IP bucket (no proxy in front).
+
 ## Known quirks
 
 - Next <=16.4.4 prints a "security upgrade recommendation" and exits on the first start/build; this fork is on

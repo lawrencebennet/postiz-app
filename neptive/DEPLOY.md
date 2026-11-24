@@ -200,28 +200,69 @@ identical to the repo's `dynamicconfig/`) is what finally lets the checkout go.
 - Production has `RESEND_API_KEY` but, by variable names, no `EMAIL_FROM_ADDRESS` / `EMAIL_FROM_NAME`: `sendEmailSync`
   returns early without them, so no email leaves today. Unchanged by this deploy.
 
-## Next deploy, prepared 2026-11-23 (not run)
+## Next deploy, prepared 2026-11-24 (not run)
 
-- Image `local/postiz-neptive:neptive-next-51dd7853` (commit `51dd7853`: approval scheduling, `posts.service.ts`
-  terminate guard + `deletePost` every root + `changeDate` restart of a waiting QUEUE post, slot lock, customer scope),
-  id `sha256:7cd4bcd1c9fe1865f7a48ff8adc28a7ecd8c058e83aa1bf63229c7c5535d92a4`, 2.37 GB, amd64, no `.env` / dev data.
-  Built locally with exactly step 1's command (`git archive` + `docker build -f Dockerfile.dev --build-arg
-  NEXT_PUBLIC_VERSION=neptive`): 6 min 13 s, `pnpm install` 78 s and `pnpm run build` 76 s both run (no cache:
-  `COPY .` precedes them). Supersedes the `c073f6f9` image prepared earlier the same day (do not deploy that one).
-- Smoke test of that image (`rehearse-prod-image.sh restore` + `schema` + `up`, prod dump of 19 Nov): "already in sync",
-  Backend is running, backend / frontend / orchestrator online with 0 restarts, `/auth/login` 200, `/portal/login` 200,
-  `/api/neptive/portal/me` 401. The approval path itself was exercised on the dev backend (`schedule-check.mjs`, 41/41),
-  not inside this container.
-- Schema: `schema.prisma` unchanged since `d54aa4c8`; the diff against a migrated database is "-- This is an empty
-  migration.". That made the schema step fail (the last `grep` for DROP lines exits 1 when there are none, and with
-  `--stop-before-schema` the container is already stopped at that point); fixed in `deploy-prod.sh` (`53e3fadc`).
-- New at run time: the backend opens a second small Prisma pool (3 connections) for the slot lock, on first use.
-- Disk: the 19 Nov deploy left 13 GB free and the preflight wants >= 14 GB. Expect it to stop; free space deliberately
-  first (e.g. `docker rmi local/postiz-neptive:rollback-20261119-1930`, the pre-`neptive-next` image, ~6.7 GB, once you
-  no longer want to roll back that far; this deploy tags the current image as the new rollback).
-- Behaviour change for the agency: from this image the client's approval of a PED slot schedules its DRAFT posts
-  (`neptive/docs/approval-scheduling.md`, including "Known limits"). Look at pending approvals with DRAFT posts whose
-  date has passed before deploying: on approval they go out at the same hour on the next possible day.
+Supersedes the `51dd7853` image prepared on 23 Nov (do not deploy that one, nor `c073f6f9`): this image carries all
+of that pending work plus client passwords.
+
+- Image `local/postiz-neptive:neptive-next-6460782f` (commit `6460782f` of `neptive-next`), id
+  `sha256:b6525d619f109b1e8f431ae6ea21110c155df009715f776b54a35f93a379a158`, amd64, 2.37 GB as `docker save`
+  (2,372,759,040 bytes), no `.env` / dev data (checked inside the image). Built with exactly step 1's command (`git archive`
+  + `docker build -f Dockerfile.dev --build-arg NEXT_PUBLIC_VERSION=neptive`): 6 min 42 s (`pnpm install` 78 s,
+  `pnpm run build` 86 s). Commits after `6460782f` touch only dev tooling and docs.
+  Run: `neptive/scripts/deploy-prod.sh --dry-run --stop-before-schema --sha 6460782f`, then the same with
+  `--i-have-approval` instead of `--dry-run`. The dry run of 24 Nov printed all 8 steps and executed nothing.
+- What it carries:
+  - from `51dd7853` (23 Nov): approval scheduling, `posts.service.ts` terminate guard + `deletePost` every root +
+    `changeDate` restart of a waiting QUEUE post, slot lock, customer scope;
+  - new: **client passwords** (`neptive/docs/client-credentials.md`): `/portal/login` with email + password, temporary
+    password from the agency ("Utenti cliente"), forced change, `/portal/account`, throttling, activity records. Magic
+    links unchanged. Existing sessions and unused magic links keep working (no row is touched; every existing session
+    gets `passwordChangeRequired = false`). One deliberate tightening: sessions of a user with `activated = false` stop
+    resolving (only deletion did before); production has no such user today (local copy of 19 Nov: 3 users, all active).
+- **Schema change (new in this image).** Additive only: tables `neptive_client_credentials` and `neptive_login_attempts`
+  (empty), column `neptive_portal_sessions.passwordChangeRequired BOOLEAN NOT NULL DEFAULT false`, enum
+  `NeptiveCredentialSource`, 5 values added to `NeptiveActivityType`, 4 indexes, 1 foreign key. Checked with
+  `neptive/dev/schema-check.sh` (throwaway copy of the local database brought to production's schema = `51dd7853`, then
+  plain `prisma db push` exactly as the container start runs it): "now in sync", **no data-loss warning**, exit 0; row
+  counts of all 102 pre-existing tables identical; a second plain push: "already in sync". The SQL the schema step will
+  see (`prisma migrate diff`, same command as step 6): 14 statements (`CREATE TYPE`, 5 `ALTER TYPE ... ADD VALUE`,
+  1 `ADD COLUMN ... DEFAULT false`, 2 `CREATE TABLE`, 4 `CREATE INDEX`, 1 `ADD CONSTRAINT`), **no DROP of any kind**, so the
+  script's DROP check passes. Step 6 and 8 now also require `neptive_client_credentials` to exist.
+- Smoke test of the image (`IMAGE=... rehearse-prod-image.sh restore` + `schema` + `up`, prod dump of 19 Nov 14:28, i.e.
+  the schema from **before** the 19 Nov deploy, so its one-time diff is the cumulative 124 statements, still with no
+  table/column/type drop): row counts of the 82 existing tables identical after the schema step (104 tables after),
+  container start "already in sync", "Backend is running" 10 s after `docker run`, backend / frontend / orchestrator
+  online with 0 restarts, container 0 restarts, `/auth/login`, `/portal/login`, `/portal/password`, `/portal/account`
+  200 with no "postiz" in the HTML, `/api/neptive/portal/me` 401. Client credentials on the image, behind
+  `tls-proxy.mjs` (https, production cookie mode; `node neptive/dev/prod-credentials-check.mjs`, 15/15): session and
+  device cookies `Domain=.neptive.com; Secure; HttpOnly; SameSite=None`, temporary-password session refused on
+  `/peds` (403), forced change works, account lock (429, `Retry-After` 900) does not stop the client's own browser, a
+  client-written `X-Forwarded-For` does not escape the IP bucket. Approval scheduling was exercised on the dev backend
+  (`schedule-check.mjs`, 23 Nov), not inside this container.
+- **Disk: free space first, or the preflight stops.** Read on 24 Nov: `/` 48 GB, **12 GB free** (13 GB after the 19 Nov
+  deploy); the preflight wants >= 14 GB. On the server: `local/postiz-neptive:neptive` = `neptive-next-d54aa4c8` (same
+  id `e50c0317`, 11.6 GB) and `rollback-20261119-1930` (`d860f4a4`, 6.66 GB, the pre-`neptive-next` image); build cache
+  0. Deliberately, before the deploy: `docker rmi local/postiz-neptive:rollback-20261119-1930` (once you no longer want
+  to roll back that far; this deploy tags the current image as the new rollback), then `df -h /`.
+- New at run time: the backend opens a second small Prisma pool (3 connections) for the slot lock, on first use (from
+  `51dd7853`). Client passwords add no process, no env variable and no dependency (bcrypt was already there). Optional
+  env `NEPTIVE_TRUSTED_PROXY_HOPS` (default 2 = host nginx + container nginx, verified in
+  `/etc/nginx/sites-available/portal.neptive.com.conf`: it appends `X-Forwarded-For`); leave it unset.
+- Behaviour changes for the agency:
+  - from `51dd7853`: the client's approval of a PED slot schedules its DRAFT posts (`neptive/docs/approval-scheduling.md`,
+    including "Known limits"). Look at pending approvals with DRAFT posts whose date has passed before deploying: on
+    approval they go out at the same hour on the next possible day.
+  - "Utenti cliente": "Invia link di accesso" is now "Genera link di accesso" (it never sent an email: the link is shown
+    and copied), plus "Genera password temporanea" / "Rimuovi password" per user. Deleting a user also deletes their
+    password.
+- Expected downtime: as on 19 Nov with `--stop-before-schema` (1 min 37 s measured), **plan 1 to 2 minutes, at most 3**:
+  stop, baseline counts, schema diff + `db push` (14 statements on tiny tables), recreate, "Backend is running". The
+  transfer (2.37 GB, ~20-25 min at the measured 1.6-2 MB/s) is not downtime.
+- Rollback: as above (old image + `compose.rollback.yml`, no database restore). The old image's own start would refuse
+  the new schema exactly as described in "Rollback" (and would now also list the two new tables and the new column as
+  data loss once they hold rows): keep using the override. Client passwords stored meanwhile stay in their table; the old
+  code ignores them, clients fall back to magic links.
 
 ## Deploy log
 
