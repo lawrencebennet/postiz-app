@@ -158,6 +158,7 @@ step_schema() {
   R "if grep -Eqi 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; then echo 'the diff drops data:'; grep -Ei 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' $D; exit 1; fi; echo \"statements: \$(grep -c ';' $D); DROP INDEX/CONSTRAINT only:\"; grep -E '^(DROP|ALTER TABLE .* DROP)' $D || echo '  (none: no DROP at all)'"
   R "$(one_off "pnpm dlx prisma@6.5.0 db push --accept-data-loss --schema $SCHEMA") | tail -4"
   R "$PSQL -c \"select 'neptive_plan_item_variants: '||coalesce(to_regclass('public.neptive_plan_item_variants')::text,'MISSING')\" | tee /dev/stderr | grep -q 'neptive_plan_item_variants: neptive_plan_item_variants'"
+  R "$PSQL -c \"select 'neptive_client_credentials: '||coalesce(to_regclass('public.neptive_client_credentials')::text,'MISSING')\" | tee /dev/stderr | grep -q 'neptive_client_credentials: neptive_client_credentials'"
   if [ "$DRY" = 0 ]; then
     Rq "$PSQL -c \"$COUNTS_SQL\"" > "$STATE_DIR/deploy-counts-after-$DATE.txt"
     python3 - "$STATE_DIR/deploy-counts-before-$DATE.txt" "$STATE_DIR/deploy-counts-after-$DATE.txt" <<'PY'
@@ -188,7 +189,7 @@ health_checks() {
   R "docker inspect -f 'container: {{.State.Status}}, restarts {{.RestartCount}}' postiz; test \"\$(docker inspect -f '{{.State.Status}} {{.RestartCount}}' postiz)\" = 'running 0'"
   R "test \"\$(docker inspect postiz --format '{{.Image}}')\" = \"\$(docker image inspect $want_image --format '{{.Id}}')\" && echo 'container runs $want_image'"
   R "docker exec -i postiz node -e \"let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const l=JSON.parse(s).map(p=>p.name+' '+p.pm2_env.status);console.log('pm2: '+l.join(', '));process.exit(['backend','frontend','orchestrator'].every(n=>l.includes(n+' online'))?0:1)})\" < <(docker exec postiz pm2 jlist)"
-  R "$PSQL -c \"select 'neptive_plan_item_variants: '||coalesce(to_regclass('public.neptive_plan_item_variants')::text,'MISSING')\""
+  R "$PSQL -c \"select 'neptive_plan_item_variants: '||coalesce(to_regclass('public.neptive_plan_item_variants')::text,'MISSING')\" -c \"select 'neptive_client_credentials: '||coalesce(to_regclass('public.neptive_client_credentials')::text,'MISSING')\""
   local p code html
   for p in /auth/login /portal/login; do
     L "code=\$(curl -s -o /dev/null -w '%{http_code}' $PUBLIC_URL$p); echo \"$PUBLIC_URL$p -> \$code\"; test \"\$code\" = 200"

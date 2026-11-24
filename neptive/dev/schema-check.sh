@@ -18,7 +18,14 @@ export DATABASE_URL="postgresql://postiz-app:pzn-local-only@127.0.0.1:55432/$DB"
 git show "$BASE:libraries/nestjs-libraries/src/database/prisma/schema.prisma" > "$OUT/schema-$BASE.prisma"
 
 echo "== 1. bring the copy to the production schema ($BASE), plain db push"
-pnpm dlx prisma@6.5.0 db push --skip-generate --schema "$OUT/schema-$BASE.prisma" > "$OUT/db-push-base.txt" 2>&1
+if ! pnpm dlx prisma@6.5.0 db push --skip-generate --schema "$OUT/schema-$BASE.prisma" > "$OUT/db-push-base.txt" 2>&1; then
+  # the local database is already ahead of production (this branch's tables/values in use): take them out of
+  # the THROWAWAY copy so it has production's shape again (rows that only this branch can create)
+  echo "local copy is ahead of $BASE: removing this branch's rows and objects from the throwaway copy"
+  $PG psql -U postiz-app -d "$DB" -qc "delete from neptive_activities where type::text like 'CLIENT\_%'" 
+  pnpm dlx prisma@6.5.0 db push --skip-generate --accept-data-loss --schema "$OUT/schema-$BASE.prisma" > "$OUT/db-push-base-accept.txt" 2>&1 || { echo "could not bring the copy back to $BASE"; cat "$OUT/db-push-base-accept.txt"; exit 1; }
+  pnpm dlx prisma@6.5.0 db push --skip-generate --schema "$OUT/schema-$BASE.prisma" > "$OUT/db-push-base.txt" 2>&1
+fi
 grep -E "sync|Error|warning|loss" "$OUT/db-push-base.txt"
 $PG pg_dump -U postiz-app -d "$DB" --schema-only --no-owner > "$OUT/schema-before.sql"
 counts() {  # exact row count of every table that existed before the push
@@ -29,6 +36,10 @@ counts() {  # exact row count of every table that existed before the push
 $PG psql -U postiz-app -d "$DB" -Atc "select tablename from pg_tables where schemaname='public' order by 1" > "$OUT/tables-before.txt"
 counts > "$OUT/rows-before.txt"
 
+echo "== 2a. the SQL the deploy's schema step will see (prisma migrate diff, same command as deploy-prod.sh step 6) + its DROP check"
+pnpm dlx prisma@6.5.0 migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel ./libraries/nestjs-libraries/src/database/prisma/schema.prisma --script > "$OUT/migrate-diff.sql" 2>"$OUT/migrate-diff.err"
+grep -v '^--' "$OUT/migrate-diff.sql" | grep -v '^$'
+if grep -Eqi 'DROP TABLE|DROP COLUMN|DROP TYPE|DROP SCHEMA|TRUNCATE|DELETE FROM' "$OUT/migrate-diff.sql"; then echo "!! deploy-prod.sh would refuse this diff"; else echo "deploy-prod.sh DROP check: passes ($(grep -c ';' "$OUT/migrate-diff.sql") statements)"; fi
 echo "== 2. plain db push of the working-tree schema (what the production container start runs)"
 pnpm dlx prisma@6.5.0 db push --skip-generate --schema ./libraries/nestjs-libraries/src/database/prisma/schema.prisma > "$OUT/db-push.txt" 2>&1
 rc=$?
