@@ -50,14 +50,6 @@ export const PortalShell = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     setNavReady(true);
   }, []);
-  // narrow screens: the section list scrolls sideways, keep the current one in view
-  useEffect(() => {
-    if (navReady) {
-      document
-        .querySelector('nav[aria-label="Sezioni del portale"] [aria-current="page"]')
-        ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
-  }, [navReady, pathname]);
   // a session opened with a temporary password reaches nothing else (the API answers 403 too)
   const mustChangePassword = !!me?.passwordChangeRequired;
   useEffect(() => {
@@ -91,6 +83,9 @@ export const PortalShell = ({ children }: { children: React.ReactNode }) => {
               suppressHydrationWarning
             >
               {me?.name || ''}
+            </Link>
+            <Link href="/portal/account" className="nx-btn sm:!hidden" data-size="sm">
+              Account
             </Link>
             <button type="button" className="nx-btn" data-size="sm" onClick={logout}>
               Esci

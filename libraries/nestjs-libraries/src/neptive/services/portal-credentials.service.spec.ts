@@ -620,6 +620,21 @@ describe('no projection returns a password hash', () => {
 });
 
 describe('request guards', () => {
+  it('deleting a client user also deletes their password', async () => {
+    const w = world();
+    const user = w.addUser({ customerId: 'cust-a', email: 'anna@a.it' });
+    w.setPassword(user, 'Password attuale 123');
+    const clients = new NeptiveClientService(
+      { ...w.repo, softDeleteClientUser: async () => { user.deletedAt = new Date(now); return { count: 1 }; } } as any,
+      {} as any,
+      {} as any,
+      w.credentialRepo as any
+    );
+    await clients.removeUser('org-1', 'cust-a', user.id);
+    expect(w.credentials).toHaveLength(0);
+    expect(await status(w.service.login({ email: 'anna@a.it', password: 'Password attuale 123' }, { ip: IP }, response()))).toBe(401);
+  });
+
   it('accepts only JSON from the portal origin', () => {
     const json = { 'content-type': 'application/json' };
     expect(sameOriginProblem({ ...json, origin: 'https://portal.neptive.com' })).toBeNull();

@@ -238,6 +238,8 @@ export class NeptiveClientService {
       throw new NotFoundException();
     }
     await this.repo.softDeleteClientUser(orgId, customerId, userId);
+    // a removed user keeps no password (their sessions already stop resolving: deletedAt)
+    await this.credentials?.deleteCredential(userId);
     return { ok: true };
   }
 }

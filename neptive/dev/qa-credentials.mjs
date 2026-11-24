@@ -267,6 +267,9 @@ const aText = await aPage.locator('body').innerText();
 check('magic-link-only user (Aurora): straight into the portal, her PED, no forced step', new URL(aPage.url()).pathname === '/portal/ped' && /New Life/.test(aText));
 
 // ---------------------------------------------------------------- 7. same email under two customers
+// a previous run soft-deleted this QA user; inviting the same email again would hit the unique key
+// (orgId, customerId, email) - pre-existing behaviour of inviteUser, see the report - so revive it (local DB)
+sql(`update neptive_client_users set "deletedAt" = null where "customerId"='${VIGAR}' and email='${CP_EMAIL}'`);
 const dup = await agencyApi(`/neptive/agency/clients/${VIGAR}/users`, { method: 'POST', body: JSON.stringify({ email: CP_EMAIL, name: 'Stessa email (QA)' }) });
 const dupId = dup.body.id;
 const tA = await agencyApi(`/neptive/agency/clients/${CP}/users/${cpUser}/temporary-password`, { method: 'POST', body: '{}' });
@@ -330,6 +333,10 @@ const crossSite = await portal(aSession, '/neptive/portal/account/password', { m
 check('set-password from another origin -> 403', crossSite.status === 403, `${crossSite.status} ${crossSite.text}`);
 const formPost = await portal(aSession, '/neptive/portal/account/password', { method: 'POST', headers: { Origin: BASE, 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'newPassword=Qualunque+cosa+123' });
 check('set-password as an HTML form post -> 403', formPost.status === 403, `${formPost.status} ${formPost.text}`);
+// finding, NOT changed by this work: the EXISTING portal POST endpoints accept a cross-site urlencoded form
+// (status=DRAFT on the own PED is a no-op that returns the PED, so nothing changes here)
+const legacyForm = await portal(aSession, '/neptive/portal/peds/e5cfeaf8-ad1a-4fe5-ba88-250efc8010e4/transition', { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'status=DRAFT' });
+say(`INFO existing endpoint POST /neptive/portal/peds/:id/transition as a cross-site HTML form -> ${legacyForm.status} (accepted: pre-existing CSRF exposure, see docs/client-credentials.md)`);
 const loginCross = await fetch(`${API}/neptive/portal-auth/login`, { method: 'POST', headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' }, body: JSON.stringify({ email: CP_EMAIL, password: SAME }) });
 check('login from another origin -> 403 (login CSRF)', loginCross.status === 403, `${loginCross.status}`);
 const tempAgain = await agencyApi(`/neptive/agency/clients/${CP}/users/${cpUser}/temporary-password`, { method: 'POST', body: '{}' });
